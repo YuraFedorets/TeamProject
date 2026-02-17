@@ -8,7 +8,10 @@
             "fullname": "Адміністратор",
             "avatar": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS0-bbeRlPdkz7vhvACzWQ4BJ1CXlxTzf14Q4QwncVZK4vIRwtJF_0YtmklNSwP99g9fBMd78NhQiZqZWDM_YbAHoOHIZuNvSrCeUxAXE0EvA&s=10",
             "email": "admin@ukd.edu.ua",
-            "room": "Не вказано"
+            "room": "Не вказано",
+            "course": "1",
+            "specialty": "ПЗ",
+            "institution": "Університет"
         },
         {
             "id": 2,
@@ -18,7 +21,10 @@
             "fullname": "проф. Іваненко О.М.",
             "email": "teacher@ukd.edu.ua",
             "avatar": "https://cdn-icons-png.flaticon.com/512/354/354637.png",
-            "room": "Не вказано"
+            "room": "Не вказано",
+            "course": "1",
+            "specialty": "ПЗ",
+            "institution": "Університет"
         },
         {
             "id": 3,
@@ -28,7 +34,10 @@
             "fullname": "Іван Студент",
             "email": "student@ukd.edu.ua",
             "avatar": "https://cdn-icons-png.flaticon.com/512/354/354637.png",
-            "room": "Не вказано"
+            "room": "Не вказано",
+            "course": "1",
+            "specialty": "ПЗ",
+            "institution": "Університет"
         },
         {
             "id": 4,
@@ -38,7 +47,82 @@
             "email": "korolchuk.serg@gmail.com",
             "role": "STUDENT",
             "avatar": "https://cdn-icons-png.flaticon.com/512/354/354637.png",
-            "room": "Не вказано"
+            "room": "Не вказано",
+            "course": "1",
+            "specialty": "ПЗ",
+            "institution": "Університет"
+        },
+        {
+            "id": 5,
+            "username": "std_4",
+            "password": "123",
+            "role": "STUDENT",
+            "fullname": "g",
+            "email": "std_4@ukd.edu.ua",
+            "avatar": "https://cdn-icons-png.flaticon.com/512/354/354637.png",
+            "course": "1",
+            "specialty": "ІПЗ",
+            "institution": "Університет"
+        },
+        {
+            "id": 6,
+            "username": "std_5",
+            "password": "123",
+            "role": "STUDENT",
+            "fullname": "d=this||self",
+            "email": "std_5@ukd.edu.ua",
+            "avatar": "https://cdn-icons-png.flaticon.com/512/354/354637.png",
+            "course": "1",
+            "specialty": "ІПЗ",
+            "institution": "Університет"
+        },
+        {
+            "id": 7,
+            "username": "std_6",
+            "password": "123",
+            "role": "STUDENT",
+            "fullname": "RobotoDraft",
+            "email": "std_6@ukd.edu.ua",
+            "avatar": "https://cdn-icons-png.flaticon.com/512/354/354637.png",
+            "course": "1",
+            "specialty": "ІПЗ",
+            "institution": "Університет"
+        },
+        {
+            "id": 8,
+            "username": "std_7",
+            "password": "123",
+            "role": "STUDENT",
+            "fullname": "m=f?f.offsetHeight:0",
+            "email": "std_7@ukd.edu.ua",
+            "avatar": "https://cdn-icons-png.flaticon.com/512/354/354637.png",
+            "course": "1",
+            "specialty": "ІПЗ",
+            "institution": "Університет"
+        },
+        {
+            "id": 9,
+            "username": "std_8",
+            "password": "123",
+            "role": "STUDENT",
+            "fullname": "e=g);e.style.height=b-m-k-n+\"px\";e.style.width=a+\"px\"};}).call(this);",
+            "email": "std_8@ukd.edu.ua",
+            "avatar": "https://cdn-icons-png.flaticon.com/512/354/354637.png",
+            "course": "1",
+            "specialty": "ІПЗ",
+            "institution": "Університет"
+        },
+        {
+            "id": 10,
+            "username": "std_9",
+            "password": "123",
+            "role": "STUDENT",
+            "fullname": "а не для комерційного використання або консультування. <a class=\"waffle-disclaimer-link\" target=\"_blank\" href=\"http://www.google.com/googlefinance/disclaimer/\">Застереження</a></td></tr><tr><td style=\"width:3em;\">&nbsp;</td><td style=\"width:1em;\"><div class=\"docs-sheet-button-bar goog-toolbar goog-inline-block\"><div class=\"docs-sheet-button goog-inline-block docs-sheet-add-button\" title=\"Додати аркуш\" tabindex=\"0\"><div class=\"goog-inline-block docs-sheet-button-outer-box\"><div class=\"docs-material goog-inline-block docs-sheet-button-inner-box\"><div class=\"docs-icon goog-inline-block \"><div class=\"docs-icon-img-container docs-icon-img docs-icon-add-20\" aria-hidden=\"true\">&nbsp;</div></div></div></div></div><div class=\"docs-sheet-menu-button goog-inline-block docs-sheet-all-button\" title=\"Усі аркуші\" tabindex=\"0\"><div class=\"goog-inline-block docs-sheet-button-outer-box\"><div class=\"docs-material goog-inline-block docs-sheet-button-inner-box\"><div class=\"docs-icon goog-inline-block \"><div class=\"docs-icon-img-container docs-icon-img docs-icon-menu-20\" aria-hidden=\"true\">&nbsp;</div></div></div></div></div></div></td><td class=\"docs-sheet-outer-container\"><div class=\"goog-inline-block\"><div class=\"docs-sheet-fade docs-sheet-fade-left\"><div class=\"docs-grille-sheet-fade\"></div></div><div class=\"docs-sheet-fade docs-sheet-fade-right\"><div class=\"docs-grille-sheet-fade\"></div></div><div class=\"docs-sheet-container goog-inline-block\"><div class=\"docs-sheet-container-bar goog-toolbar goog-inline-block\"><div class=\"docs-sheet-tab goog-inline-block\"><div class=\"goog-inline-block docs-sheet-tab-outer-box\"><div class=\"goog-inline-block docs-sheet-tab-inner-box\"><div class=\"goog-inline-block docs-sheet-tab-caption\">Журнал успішності</div><div class=\"goog-inline-block docs-sheet-tab-dropdown\"></div></div></div></div><div class=\"docs-sheet-tab goog-inline-block\"><div class=\"goog-inline-block docs-sheet-tab-outer-box\"><div class=\"goog-inline-block docs-sheet-tab-inner-box\"><div class=\"goog-inline-block docs-sheet-tab-caption\">РЕЙТИНГ</div><div class=\"goog-inline-block docs-sheet-tab-dropdown\"></div></div></div></div><div class=\"docs-sheet-tab goog-inline-block\"><div class=\"goog-inline-block docs-sheet-tab-outer-box\"><div class=\"goog-inline-block docs-sheet-tab-inner-box\"><div class=\"goog-inline-block docs-sheet-tab-caption\">Базова загальновійськова підготовка (теоретична підготовка)</div><div class=\"goog-inline-block docs-sheet-tab-dropdown\"></div></div></div></div><div class=\"docs-sheet-tab goog-inline-block\"><div class=\"goog-inline-block docs-sheet-tab-outer-box\"><div class=\"goog-inline-block docs-sheet-tab-inner-box\"><div class=\"goog-inline-block docs-sheet-tab-caption\">Домедична допомога та тактична медицина (практична підготовка)</div><div class=\"goog-inline-block docs-sheet-tab-dropdown\"></div></div></div></div><div class=\"docs-sheet-tab goog-inline-block\"><div class=\"goog-inline-block docs-sheet-tab-outer-box\"><div class=\"goog-inline-block docs-sheet-tab-inner-box\"><div class=\"goog-inline-block docs-sheet-tab-caption\">Домедична допомога та тактична медицина (теоретична підготовка)</div><div class=\"goog-inline-block docs-sheet-tab-dropdown\"></div></div></div></div><div class=\"docs-sheet-tab goog-inline-block\"><div class=\"goog-inline-block docs-sheet-tab-outer-box\"><div class=\"goog-inline-block docs-sheet-tab-inner-box\"><div class=\"goog-inline-block docs-sheet-tab-caption\">Групова динаміка та комунікація</div><div class=\"goog-inline-block docs-sheet-tab-dropdown\"></div></div></div></div><div class=\"docs-sheet-tab goog-inline-block\"><div class=\"goog-inline-block docs-sheet-tab-outer-box\"><div class=\"goog-inline-block docs-sheet-tab-inner-box\"><div class=\"goog-inline-block docs-sheet-tab-caption\">Конструювання програмного забезпечення</div><div class=\"goog-inline-block docs-sheet-tab-dropdown\"></div></div></div></div><div class=\"docs-sheet-tab goog-inline-block\"><div class=\"goog-inline-block docs-sheet-tab-outer-box\"><div class=\"goog-inline-block docs-sheet-tab-inner-box\"><div class=\"goog-inline-block docs-sheet-tab-caption\">Об`єктно-орієнтоване програмування</div><div class=\"goog-inline-block docs-sheet-tab-dropdown\"></div></div></div></div><div class=\"docs-sheet-tab goog-inline-block\"><div class=\"goog-inline-block docs-sheet-tab-outer-box\"><div class=\"goog-inline-block docs-sheet-tab-inner-box\"><div class=\"goog-inline-block docs-sheet-tab-caption\">Об`єктно-орієнтоване програмування (Курсова робота)</div><div class=\"goog-inline-block docs-sheet-tab-dropdown\"></div></div></div></div><div class=\"docs-sheet-tab goog-inline-block\"><div class=\"goog-inline-block docs-sheet-tab-outer-box\"><div class=\"goog-inline-block docs-sheet-tab-inner-box\"><div class=\"goog-inline-block docs-sheet-tab-caption\">Програмування інтернет-речей</div><div class=\"goog-inline-block docs-sheet-tab-dropdown\"></div></div></div></div><div class=\"docs-sheet-tab goog-inline-block\"><div class=\"goog-inline-block docs-sheet-tab-outer-box\"><div class=\"goog-inline-block docs-sheet-tab-inner-box\"><div class=\"goog-inline-block docs-sheet-tab-caption\">Теорія ймовірностей та математична статистика</div><div class=\"goog-inline-block docs-sheet-tab-dropdown\"></div></div></div></div><div class=\"docs-sheet-tab goog-inline-block\"><div class=\"goog-inline-block docs-sheet-tab-outer-box\"><div class=\"goog-inline-block docs-sheet-tab-inner-box\"><div class=\"goog-inline-block docs-sheet-tab-caption\">Основи комп`ютерної графіки</div><div class=\"goog-inline-block docs-sheet-tab-dropdown\"></div></div></div></div><div class=\"docs-sheet-tab goog-inline-block\"><div class=\"goog-inline-block docs-sheet-tab-outer-box\"><div class=\"goog-inline-block docs-sheet-tab-inner-box\"><div class=\"goog-inline-block docs-sheet-tab-caption\">Іноземна мова (за професійним спрямуванням)</div><div class=\"goog-inline-block docs-sheet-tab-dropdown\"></div></div></div></div><div class=\"docs-sheet-tab goog-inline-block\"><div class=\"goog-inline-block docs-sheet-tab-outer-box\"><div class=\"goog-inline-block docs-sheet-tab-inner-box\"><div class=\"goog-inline-block docs-sheet-tab-caption\">Підсумок</div><div class=\"goog-inline-block docs-sheet-tab-dropdown\"></div></div></div></div></div></div></div></td><td class=\"docs-sheet-button-bar-container\"><div class=\"docs-sheet-button-bar goog-toolbar goog-inline-block\"><div class=\"docs-sheet-button goog-inline-block docs-sheet-left-button\" title=\"Прокрутити вліво\"><div class=\"goog-inline-block docs-sheet-button-outer-box\"><div class=\"docs-material goog-inline-block docs-sheet-button-inner-box\"><div class=\"docs-icon goog-inline-block \"><div class=\"docs-icon-img-container docs-icon-img docs-icon-chevron-left-20\" aria-hidden=\"true\">&nbsp;</div></div></div></div></div><div class=\"docs-sheet-button goog-inline-block docs-sheet-right-button\" title=\"Прокрутити вправо\"><div class=\"goog-inline-block docs-sheet-button-outer-box\"><div class=\"docs-material goog-inline-block docs-sheet-button-inner-box\"><div class=\"docs-icon goog-inline-block \"><div class=\"docs-icon-img-container docs-icon-img docs-icon-chevron-right-20\" aria-hidden=\"true\">&nbsp;</div></div></div></div></div></div></td><td class=\"docs-sheet-status-container\"><div class=\"docs-sheet-status\"></div><div class=\"docs-sheet-filter-status\" style=\"display:none\" tabindex=\"0\" role=\"contentinfo\"><div class=\"docs-material\"><div class=\"docs-icon goog-inline-block \"><div class=\"docs-icon-img-container docs-icon-img docs-icon-editors-ia-filter-funnel-solid\" aria-hidden=\"true\">&nbsp;</div></div></div><div class=\"docs-sheet-filter-status-text\"></div></div></td></tr></table></div><script nonce=\"NBvMK5D1zMAcVDODc6doOQ\">var mergedConfig = {\"id\":\"46372ea00f4e8bbf\"",
+            "email": "std_9@ukd.edu.ua",
+            "avatar": "https://cdn-icons-png.flaticon.com/512/354/354637.png",
+            "course": "1",
+            "specialty": "ІПЗ",
+            "institution": "Університет"
         }
     ],
     "subjects": [
@@ -63,27 +147,6 @@
     ],
     "absences": [
         {
-            "id": 1,
-            "student_id": 4,
-            "subject_id": 3,
-            "deadline": "2026-02-21T18:34",
-            "status": "active"
-        },
-        {
-            "id": 2,
-            "student_id": 4,
-            "subject_id": 1,
-            "deadline": "2026-02-01T18:35",
-            "status": "active"
-        },
-        {
-            "id": 3,
-            "student_id": 4,
-            "subject_id": 2,
-            "deadline": "2026-02-07T18:39",
-            "status": "active"
-        },
-        {
             "id": 4,
             "student_id": 3,
             "subject_id": 2,
@@ -93,34 +156,34 @@
     ],
     "creators": [
         {
-            "name": "Олександр",
-            "role": "Backend Lead",
-            "desc": "Архітектор серверної частини. Відповідає за безпеку даних та міграції бази даних.",
-            "skills": "Python, Flask, JSON Security"
+            "name": "Сергій",
+            "role": "frontend developer",
+            "desc": "Робить все, хота блять на фронті",
+            "skills": "https://www.youtube.com/watch?v=YAgJ9XugGBo&t=5018s"
         },
         {
-            "name": "Марія",
-            "role": "UI/UX Designer",
-            "desc": "Стиліст інтерфейсу. Створила темно-червону гамму університету УКД.",
-            "skills": "Figma, Tailwind, Color Theory"
+            "name": "Юрій",
+            "role": "Beer Master",
+            "desc": "Робить все що недоробив Сергій, а також відповідає за пивний баланс в команді.",
+            "skills": "Drinc beer, making memes, JavaScript"
         },
         {
-            "name": "Дмитро",
-            "role": "Frontend Dev",
+            "name": "Арсен",
+            "role": "",
             "desc": "Майстер інтерактивності. Розробив систему таймерів та акордеонів.",
-            "skills": "JS, DOM API, Animations"
+            "skills": "Play Furi Hitler all day, sliping, JavaScript"
         },
         {
-            "name": "Олена",
-            "role": "QA Engineer",
-            "desc": "Головний тестувальник. Знайшла та допомогла виправити критичні помилки KeyError.",
-            "skills": "Manual Testing, Debugging"
+            "name": "Михайло",
+            "role": "Моральна підтримка",
+            "desc": "Професійно переглядає тікток та підтримує бойовий дух команди.",
+            "skills": "Light, smoking, debugging"
         },
         {
-            "name": "Артем",
-            "role": "Data Analyst",
-            "desc": "Займається структуруванням інформації про предмети та кабінети.",
-            "skills": "Data Mining, Excel Integration"
+            "name": "Шляпа",
+            "role": "Зроби мені кохве",
+            "desc": "Професіно робить вигляд що хоть щось розуміє в цьому проекті, але насправді просто фапає і робить каву для інших учасників команди.",
+            "skills": "Faping, Coffee Making, Data Structuring"
         }
     ]
 }
