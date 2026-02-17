@@ -1,0 +1,105 @@
+{
+    "users": [
+        {
+            "id": 1,
+            "username": "admin",
+            "password": "123",
+            "role": "ADMIN",
+            "fullname": "Адміністратор",
+            "avatar": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS0-bbeRlPdkz7vhvACzWQ4BJ1CXlxTzf14Q4QwncVZK4vIRwtJF_0YtmklNSwP99g9fBMd78NhQiZqZWDM_YbAHoOHIZuNvSrCeUxAXE0EvA&s=10",
+            "email": "admin@ukd.edu.ua",
+            "room": "Не вказано"
+        },
+        {
+            "id": 2,
+            "username": "teacher",
+            "password": "123",
+            "role": "TEACHER",
+            "fullname": "проф. Іваненко О.М.",
+            "email": "teacher@ukd.edu.ua",
+            "avatar": "https://cdn-icons-png.flaticon.com/512/354/354637.png",
+            "room": "Не вказано"
+        },
+        {
+            "id": 3,
+            "username": "student",
+            "password": "123",
+            "role": "STUDENT",
+            "fullname": "Іван Студент",
+            "email": "student@ukd.edu.ua",
+            "avatar": "https://cdn-icons-png.flaticon.com/512/354/354637.png",
+            "room": "Не вказано"
+        },
+        {
+            "id": 4,
+            "username": "Mogeni",
+            "password": "123",
+            "fullname": "СЕРГЫЙ",
+            "email": "korolchuk.serg@gmail.com",
+            "role": "STUDENT",
+            "avatar": "https://cdn-icons-png.flaticon.com/512/354/354637.png",
+            "room": "Не вказано"
+        }
+    ],
+    "subjects": [
+        {
+            "id": 1,
+            "name": "Вища математика",
+            "teacher": "проф. Іваненко О.М.",
+            "teacher_id": 1
+        },
+        {
+            "id": 2,
+            "name": "Основи програмування",
+            "teacher": "доц. Петренко В.В.",
+            "teacher_id": 1
+        },
+        {
+            "id": 3,
+            "name": "пинаня хера ",
+            "teacher": "Підзалупко",
+            "teacher_id": 1
+        }
+    ],
+    "absences": [
+        {
+            "id": 1,
+            "student_id": 4,
+            "subject_id": 3,
+            "deadline": "2026-02-17T16:08",
+            "status": "active"
+        }
+    ],
+    "creators": [
+        {
+            "name": "Олександр",
+            "role": "Backend Lead",
+            "desc": "Архітектор серверної частини. Відповідає за безпеку даних та міграції бази даних.",
+            "skills": "Python, Flask, JSON Security"
+        },
+        {
+            "name": "Марія",
+            "role": "UI/UX Designer",
+            "desc": "Стиліст інтерфейсу. Створила темно-червону гамму університету УКД.",
+            "skills": "Figma, Tailwind, Color Theory"
+        },
+        {
+            "name": "Дмитро",
+            "role": "Frontend Dev",
+            "desc": "Майстер інтерактивності. Розробив систему таймерів та акордеонів.",
+            "skills": "JS, DOM API, Animations"
+        },
+        {
+            "name": "Олена",
+            "role": "QA Engineer",
+            "desc": "Головний тестувальник. Знайшла та допомогла виправити критичні помилки KeyError.",
+            "skills": "Manual Testing, Debugging"
+        },
+        {
+            "name": "Артем",
+            "role": "Data Analyst",
+            "desc": "Займається структуруванням інформації про предмети та кабінети.",
+            "skills": "Data Mining, Excel Integration"
+        }
+    ]
+}
