@@ -54,7 +54,7 @@ def init_db():
             )
         ''')
 
-        # 3. Companies (Оновлено: додано avatar)
+        # 3. Companies
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS companies (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,6 +91,7 @@ def init_db():
                 user_id INTEGER, 
                 message TEXT,
                 status TEXT DEFAULT 'pending',
+                flagged BOOLEAN DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (student_id) REFERENCES students (id),
                 FOREIGN KEY (company_id) REFERENCES companies (id),
@@ -98,6 +99,12 @@ def init_db():
             )
         ''')
         
+        # Міграція для таблиці запрошень (позначка для адміна)
+        try:
+            cursor.execute("ALTER TABLE invitations ADD COLUMN flagged BOOLEAN DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass # Колонка вже існує
+            
         db.commit()
         
         # Admin Default
@@ -324,12 +331,12 @@ HTML_TEMPLATE = """
                                 {% if session.get('role') != 'STUDENT' %}<th class="p-4 font-black uppercase">Кому (Студент)</th>{% endif %}
                                 <th class="p-4 font-black uppercase">Повідомлення</th>
                                 <th class="p-4 font-black uppercase">Статус</th>
-                                {% if session.get('role') == 'STUDENT' %}<th class="p-4 font-black uppercase">Дії</th>{% endif %}
+                                <th class="p-4 font-black uppercase">Дії</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
                             {% for inv in invitations %}
-                            <tr class="hover:bg-gray-50 transition">
+                            <tr class="hover:bg-gray-50 transition {% if session.get('role') == 'ADMIN' and inv.flagged %}bg-red-50 border-l-4 border-red-600{% endif %}">
                                 {% if session.get('role') != 'COMPANY' %}
                                 <td class="p-4">
                                     <div class="flex items-center space-x-3">
@@ -356,24 +363,46 @@ HTML_TEMPLATE = """
                                     {% elif inv.status == 'rejected' %}
                                         <span class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-black uppercase"><i class="fas fa-times mr-1"></i> Відхилено</span>
                                     {% endif %}
+                                    
+                                    {% if session.get('role') == 'ADMIN' and inv.flagged %}
+                                        <div class="mt-2 text-red-600 text-xs font-black uppercase animate-bounce"><i class="fas fa-flag"></i> Увага адміна!</div>
+                                    {% endif %}
                                 </td>
 
-                                {% if session.get('role') == 'STUDENT' and inv.status == 'pending' %}
-                                <td class="p-4 flex gap-2">
-                                    <form action="/respond_invite" method="POST" class="inline">
-                                        <input type="hidden" name="invite_id" value="{{ inv.id }}">
-                                        <input type="hidden" name="action" value="accept">
-                                        <button class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-xs font-bold uppercase">Так</button>
-                                    </form>
-                                    <form action="/respond_invite" method="POST" class="inline">
-                                        <input type="hidden" name="invite_id" value="{{ inv.id }}">
-                                        <input type="hidden" name="action" value="reject">
-                                        <button class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-xs font-bold uppercase">Ні</button>
-                                    </form>
+                                <td class="p-4 flex gap-2 flex-wrap">
+                                    {% if session.get('role') == 'STUDENT' and inv.status == 'pending' %}
+                                        <form action="/respond_invite" method="POST" class="inline">
+                                            <input type="hidden" name="invite_id" value="{{ inv.id }}">
+                                            <input type="hidden" name="action" value="accept">
+                                            <button class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-xs font-bold uppercase">Так</button>
+                                        </form>
+                                        <form action="/respond_invite" method="POST" class="inline">
+                                            <input type="hidden" name="invite_id" value="{{ inv.id }}">
+                                            <input type="hidden" name="action" value="reject">
+                                            <button class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-xs font-bold uppercase">Ні</button>
+                                        </form>
+                                    {% elif session.get('role') == 'STUDENT' %}
+                                        <span class="text-gray-400 text-xs uppercase font-bold">Закрито</span>
+                                    {% endif %}
+                                    
+                                    {% if session.get('role') == 'ADMIN' %}
+                                        <form action="/delete_invite" method="POST" class="inline" onsubmit="return confirm('Видалити цю заявку назавжди?');">
+                                            <input type="hidden" name="invite_id" value="{{ inv.id }}">
+                                            <button class="bg-black text-white px-3 py-1 rounded hover:bg-red-700 text-xs font-bold uppercase" title="Видалити"><i class="fas fa-trash"></i></button>
+                                        </form>
+                                    {% endif %}
+                                    
+                                    {% if session.get('role') == 'COMPANY' %}
+                                        {% if not inv.flagged %}
+                                            <form action="/flag_invite" method="POST" class="inline">
+                                                <input type="hidden" name="invite_id" value="{{ inv.id }}">
+                                                <button class="bg-yellow-400 text-black px-3 py-1 rounded hover:bg-yellow-500 text-xs font-bold uppercase whitespace-nowrap" title="Покликати адміна для вирішення питань"><i class="fas fa-flag"></i> Покликати Адміна</button>
+                                            </form>
+                                        {% else %}
+                                            <span class="text-red-600 text-xs font-bold uppercase"><i class="fas fa-flag"></i> Адмін сповіщений</span>
+                                        {% endif %}
+                                    {% endif %}
                                 </td>
-                                {% elif session.get('role') == 'STUDENT' %}
-                                <td class="p-4 text-gray-400 text-xs uppercase font-bold">Закрито</td>
-                                {% endif %}
                             </tr>
                             {% endfor %}
                             {% if not invitations %}
@@ -823,12 +852,31 @@ def respond_invite():
     
     db = get_db()
     # Перевірка чи цей інвайт належить цьому студенту
-    # (Спрощена перевірка, в ідеалі треба джойнити і звіряти ID)
     db.execute("UPDATE invitations SET status = ? WHERE id = ?", (new_status, invite_id))
     db.commit()
     
     msg = "Ви прийняли пропозицію!" if new_status == 'accepted' else "Ви відхилили пропозицію."
     flash(msg)
+    return redirect('/?tab=invitations')
+
+@app.route('/delete_invite', methods=['POST'])
+def delete_invite():
+    if session.get('role') != 'ADMIN': return redirect('/')
+    invite_id = request.form.get('invite_id')
+    db = get_db()
+    db.execute("DELETE FROM invitations WHERE id = ?", (invite_id,))
+    db.commit()
+    flash("Заявку успішно видалено.")
+    return redirect('/?tab=invitations')
+
+@app.route('/flag_invite', methods=['POST'])
+def flag_invite():
+    if session.get('role') != 'COMPANY': return redirect('/')
+    invite_id = request.form.get('invite_id')
+    db = get_db()
+    db.execute("UPDATE invitations SET flagged = 1 WHERE id = ?", (invite_id,))
+    db.commit()
+    flash("Ви позначили цю заявку. Адміністратор отримає сповіщення!")
     return redirect('/?tab=invitations')
 
 @app.route('/api/student/<int:user_id>')
