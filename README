@@ -1,1 +1,7 @@
+БД: 
+3 таблички Users, Admins, Companies, Students, Invitations
+Primary key, id, ...
+std: First Last names 
 
+в таблиці Invitations слід додати звязок (foreignkey) student_id, user_id, company_id, message
+sql lite
