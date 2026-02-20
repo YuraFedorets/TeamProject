@@ -5,7 +5,7 @@ from datetime import datetime
 
 # Налаштування додатка
 app = Flask(__name__)
-app.secret_key = 'ukd_recruitment_secret_key_v3'
+app.secret_key = 'ukd_recruitment_secret_key_v4'
 DATABASE = 'ukd_database.db'
 
 # --- РОБОТА З БАЗОЮ ДАНИХ (SQLite) ---
@@ -35,7 +35,8 @@ def init_db():
                 username TEXT UNIQUE NOT NULL,
                 password TEXT NOT NULL,
                 email TEXT,
-                role TEXT NOT NULL DEFAULT 'STUDENT'
+                role TEXT NOT NULL DEFAULT 'STUDENT',
+                status TEXT DEFAULT 'active'
             )
         ''')
 
@@ -46,13 +47,21 @@ def init_db():
                 user_id INTEGER UNIQUE,
                 first_name TEXT,
                 last_name TEXT,
+                patronymic TEXT,
+                course TEXT,
                 specialty TEXT,
                 skills TEXT,
                 links TEXT,
+                contact_info TEXT,
                 avatar TEXT DEFAULT 'https://cdn-icons-png.flaticon.com/512/354/354637.png',
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )
         ''')
+        
+        # Міграції для студентів (якщо БД вже існує)
+        for col in ['patronymic', 'course', 'contact_info']:
+            try: cursor.execute(f"ALTER TABLE students ADD COLUMN {col} TEXT")
+            except sqlite3.OperationalError: pass
 
         # 3. Companies
         cursor.execute('''
@@ -62,15 +71,20 @@ def init_db():
                 company_name TEXT,
                 description TEXT,
                 avatar TEXT DEFAULT 'https://cdn-icons-png.flaticon.com/512/3061/3061341.png',
+                position TEXT,
+                contact_info TEXT,
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )
         ''')
         
-        # Міграція для існуючих баз даних (додаємо колонку avatar якщо її немає)
-        try:
-            cursor.execute("ALTER TABLE companies ADD COLUMN avatar TEXT DEFAULT 'https://cdn-icons-png.flaticon.com/512/3061/3061341.png'")
-        except sqlite3.OperationalError:
-            pass # Колонка вже існує
+        # Міграції для компаній
+        for col in ['avatar', 'position', 'contact_info']:
+            try: cursor.execute(f"ALTER TABLE companies ADD COLUMN {col} TEXT")
+            except sqlite3.OperationalError: pass
+            
+        # Якщо avatar був порожнім при доданні, ставимо дефолт
+        try: cursor.execute("ALTER TABLE companies ALTER COLUMN avatar SET DEFAULT 'https://cdn-icons-png.flaticon.com/512/3061/3061341.png'")
+        except sqlite3.OperationalError: pass
 
         # 4. Admins
         cursor.execute('''
@@ -99,11 +113,10 @@ def init_db():
             )
         ''')
         
-        # Міграція для таблиці запрошень (позначка для адміна)
-        try:
-            cursor.execute("ALTER TABLE invitations ADD COLUMN flagged BOOLEAN DEFAULT 0")
-        except sqlite3.OperationalError:
-            pass # Колонка вже існує
+        try: cursor.execute("ALTER TABLE invitations ADD COLUMN flagged BOOLEAN DEFAULT 0")
+        except sqlite3.OperationalError: pass
+        try: cursor.execute("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'active'")
+        except sqlite3.OperationalError: pass
             
         db.commit()
         
@@ -135,10 +148,11 @@ HTML_TEMPLATE = """
         .nav-btn.active { border-bottom: 2px solid white; font-weight: bold; color: white; }
         .nav-btn { color: #ccc; transition: 0.3s; }
         .nav-btn:hover { color: white; }
-        input, select, textarea { border: 2px solid #ddd; transition: 0.3s; }
+        input, select, textarea { border: 2px solid #ddd; transition: 0.3s; color: black; }
         input:focus, select:focus, textarea:focus { border-color: var(--ukd-bright); outline: none; }
         .modal-bg { background: rgba(0,0,0,0.9); }
         .landing-hero { background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://yt3.googleusercontent.com/ytc/AIdro_k624OQvH_3vjA4H8U1fQvX5Q5x5x5x5x5x5x5x5=s900-c-k-c0x00ffffff-no-rj'); background-size: cover; background-position: center; }
+        .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -160,6 +174,9 @@ HTML_TEMPLATE = """
                 {% if session.get('role') == 'ADMIN' %}
                     <a href="/?tab=invitations" class="nav-btn px-2 py-1 {{ 'active' if active_tab == 'invitations' else '' }} text-yellow-400">
                         <i class="fas fa-shield-alt mr-1"></i> Адмін Панель
+                    </a>
+                    <a href="/?tab=users" class="nav-btn px-2 py-1 {{ 'active' if active_tab == 'users' else '' }} text-purple-400">
+                        <i class="fas fa-users mr-1"></i> Користувачі
                     </a>
                 {% endif %}
 
@@ -203,6 +220,7 @@ HTML_TEMPLATE = """
         <div class="md:hidden flex justify-around mt-4 border-t border-white/10 pt-2">
             <a href="/?tab=ranking" class="text-sm"><i class="fas fa-list"></i> Рейтинг</a>
             <a href="/?tab=invitations" class="text-sm"><i class="fas fa-inbox"></i> Inbox</a>
+            {% if session.get('role') == 'ADMIN' %}<a href="/?tab=users" class="text-sm text-purple-400"><i class="fas fa-users"></i> Юзери</a>{% endif %}
             <a href="/?tab=profile" class="text-sm"><i class="fas fa-user"></i> Профіль</a>
         </div>
         {% endif %}
@@ -220,7 +238,7 @@ HTML_TEMPLATE = """
           {% endif %}
         {% endwith %}
 
-        <!-- ЛЕНДІНГ ПЕЙДЖ (Для незалогінених) -->
+        <!-- ЛЕНДІНГ ПЕЙДЖ -->
         {% if not session.get('user_id') %}
         <div class="landing-hero min-h-[80vh] flex items-center justify-center text-center px-4">
             <div class="max-w-4xl">
@@ -229,7 +247,6 @@ HTML_TEMPLATE = """
                 </h1>
                 <p class="text-xl md:text-2xl mb-8 font-light text-gray-200">
                     Платформа працевлаштування для студентів Університету Короля Данила.
-                    <br>Компанії знаходять таланти, студенти знаходять можливості.
                 </p>
                 <div class="flex flex-col md:flex-row justify-center gap-4">
                     <button onclick="toggleModal('register-modal')" class="bg-red-700 text-white px-8 py-4 rounded-full text-xl font-black uppercase hover:bg-red-800 transition shadow-xl transform hover:scale-105">
@@ -238,24 +255,6 @@ HTML_TEMPLATE = """
                     <button onclick="toggleModal('register-modal')" class="bg-white text-black px-8 py-4 rounded-full text-xl font-black uppercase hover:bg-gray-200 transition shadow-xl transform hover:scale-105">
                         <i class="fas fa-building mr-2"></i> Я Роботодавець
                     </button>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 text-left">
-                    <div class="bg-black/50 p-6 rounded-2xl backdrop-blur-sm border border-white/10">
-                        <i class="fas fa-user-graduate text-4xl text-red-500 mb-4"></i>
-                        <h3 class="text-xl font-bold uppercase mb-2">Для Студентів</h3>
-                        <p class="text-gray-300">Створіть портфоліо, додайте навички та отримуйте пропозиції роботи прямо на сайті.</p>
-                    </div>
-                    <div class="bg-black/50 p-6 rounded-2xl backdrop-blur-sm border border-white/10">
-                        <i class="fas fa-briefcase text-4xl text-blue-500 mb-4"></i>
-                        <h3 class="text-xl font-bold uppercase mb-2">Для Компаній</h3>
-                        <p class="text-gray-300">Переглядайте рейтинг найкращих студентів, фільтруйте за навичками та надсилайте запрошення.</p>
-                    </div>
-                    <div class="bg-black/50 p-6 rounded-2xl backdrop-blur-sm border border-white/10">
-                        <i class="fas fa-check-circle text-4xl text-green-500 mb-4"></i>
-                        <h3 class="text-xl font-bold uppercase mb-2">Простота</h3>
-                        <p class="text-gray-300">Без зайвих резюме. Тільки реальні навички, рейтинг та прямий зв'язок.</p>
-                    </div>
                 </div>
             </div>
         </div>
@@ -278,8 +277,8 @@ HTML_TEMPLATE = """
                         <div class="flex items-center space-x-4 mb-4">
                             <img src="{{ std.avatar }}" class="w-16 h-16 rounded-full border-2 border-black object-cover bg-gray-200">
                             <div>
-                                <h3 class="text-xl font-black uppercase">{{ std.first_name }} {{ std.last_name }}</h3>
-                                <p class="text-sm text-gray-500 font-bold">{{ std.specialty }}</p>
+                                <h3 class="text-xl font-black uppercase">{{ std.last_name }} {{ std.first_name }}</h3>
+                                <p class="text-sm text-gray-500 font-bold">{{ std.course }} курс, {{ std.specialty }}</p>
                             </div>
                         </div>
                         
@@ -323,11 +322,11 @@ HTML_TEMPLATE = """
                     {% else %} <i class="fas fa-paper-plane text-blue-400"></i> Надіслані Пропозиції {% endif %}
                 </h2>
                 
-                <div class="bg-white text-black rounded-3xl overflow-hidden shadow-2xl">
-                    <table class="w-full text-left">
-                        <thead class="bg-gray-100 border-b-2 border-black">
-                            <tr>
-                                {% if session.get('role') != 'COMPANY' %}<th class="p-4 font-black uppercase">Від Кого (Компанія)</th>{% endif %}
+                <div class="bg-white text-black rounded-3xl shadow-2xl overflow-hidden">
+                    <div class="table-wrapper">
+                        <table class="w-full text-left min-w-max">
+                            <thead class="bg-gray-100 border-b-2 border-black">
+                                <tr>
                                 {% if session.get('role') != 'STUDENT' %}<th class="p-4 font-black uppercase">Кому (Студент)</th>{% endif %}
                                 <th class="p-4 font-black uppercase">Повідомлення</th>
                                 <th class="p-4 font-black uppercase">Статус</th>
@@ -350,10 +349,10 @@ HTML_TEMPLATE = """
                                 {% endif %}
                                 
                                 {% if session.get('role') != 'STUDENT' %}
-                                <td class="p-4 font-bold">{{ inv.first_name }} {{ inv.last_name }}</td>
+                                <td class="p-4 font-bold">{{ inv.last_name }} {{ inv.first_name }}</td>
                                 {% endif %}
                                 
-                                <td class="p-4 text-sm text-gray-600 italic max-w-xs">"{{ inv.message }}"</td>
+                                <td class="p-4 text-sm text-gray-600 italic max-w-xs whitespace-normal">"{{ inv.message }}"</td>
                                 
                                 <td class="p-4">
                                     {% if inv.status == 'pending' %}
@@ -369,45 +368,143 @@ HTML_TEMPLATE = """
                                     {% endif %}
                                 </td>
 
-                                <td class="p-4 flex gap-2 flex-wrap">
-                                    {% if session.get('role') == 'STUDENT' and inv.status == 'pending' %}
-                                        <form action="/respond_invite" method="POST" class="inline">
-                                            <input type="hidden" name="invite_id" value="{{ inv.id }}">
-                                            <input type="hidden" name="action" value="accept">
-                                            <button class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-xs font-bold uppercase">Так</button>
-                                        </form>
-                                        <form action="/respond_invite" method="POST" class="inline">
-                                            <input type="hidden" name="invite_id" value="{{ inv.id }}">
-                                            <input type="hidden" name="action" value="reject">
-                                            <button class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-xs font-bold uppercase">Ні</button>
-                                        </form>
-                                    {% elif session.get('role') == 'STUDENT' %}
-                                        <span class="text-gray-400 text-xs uppercase font-bold">Закрито</span>
-                                    {% endif %}
-                                    
-                                    {% if session.get('role') == 'ADMIN' %}
-                                        <form action="/delete_invite" method="POST" class="inline" onsubmit="return confirm('Видалити цю заявку назавжди?');">
-                                            <input type="hidden" name="invite_id" value="{{ inv.id }}">
-                                            <button class="bg-black text-white px-3 py-1 rounded hover:bg-red-700 text-xs font-bold uppercase" title="Видалити"><i class="fas fa-trash"></i></button>
-                                        </form>
-                                    {% endif %}
-                                    
-                                    {% if session.get('role') == 'COMPANY' %}
-                                        {% if not inv.flagged %}
-                                            <form action="/flag_invite" method="POST" class="inline">
+                                <td class="p-4">
+                                    <div class="flex gap-2 items-center flex-wrap min-w-[150px]">
+                                        {% if session.get('role') == 'STUDENT' and inv.status == 'pending' %}
+                                            <form action="/respond_invite" method="POST" class="inline-block m-0">
                                                 <input type="hidden" name="invite_id" value="{{ inv.id }}">
-                                                <button class="bg-yellow-400 text-black px-3 py-1 rounded hover:bg-yellow-500 text-xs font-bold uppercase whitespace-nowrap" title="Покликати адміна для вирішення питань"><i class="fas fa-flag"></i> Покликати Адміна</button>
+                                                <input type="hidden" name="action" value="accept">
+                                                <button class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-xs font-bold uppercase whitespace-nowrap">Так</button>
                                             </form>
-                                        {% else %}
-                                            <span class="text-red-600 text-xs font-bold uppercase"><i class="fas fa-flag"></i> Адмін сповіщений</span>
+                                            <form action="/respond_invite" method="POST" class="inline-block m-0">
+                                                <input type="hidden" name="invite_id" value="{{ inv.id }}">
+                                                <input type="hidden" name="action" value="reject">
+                                                <button class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-xs font-bold uppercase whitespace-nowrap">Ні</button>
+                                            </form>
+                                        {% elif session.get('role') == 'STUDENT' %}
+                                            <span class="text-gray-400 text-xs uppercase font-bold">Закрито</span>
                                         {% endif %}
-                                    {% endif %}
+                                        
+                                        {% if session.get('role') == 'ADMIN' %}
+                                            <form action="/delete_invite" method="POST" class="inline-block m-0" onsubmit="return confirm('Видалити цю заявку назавжди?');">
+                                                <input type="hidden" name="invite_id" value="{{ inv.id }}">
+                                                <button class="bg-black text-white px-3 py-1 rounded hover:bg-red-700 text-xs font-bold uppercase whitespace-nowrap" title="Видалити"><i class="fas fa-trash"></i></button>
+                                            </form>
+                                        {% endif %}
+                                        
+                                        {% if session.get('role') == 'COMPANY' %}
+                                            {% if not inv.flagged %}
+                                                <form action="/flag_invite" method="POST" class="inline-block m-0">
+                                                    <input type="hidden" name="invite_id" value="{{ inv.id }}">
+                                                    <button class="bg-yellow-400 text-black px-3 py-1 rounded hover:bg-yellow-500 text-xs font-bold uppercase whitespace-nowrap" title="Покликати адміна для вирішення питань"><i class="fas fa-flag"></i> Покликати Адміна</button>
+                                                </form>
+                                            {% else %}
+                                                <span class="text-red-600 text-xs font-bold uppercase whitespace-nowrap"><i class="fas fa-flag"></i> Адмін сповіщений</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
                             {% if not invitations %}
                             <tr><td colspan="5" class="p-8 text-center text-gray-400">У вас поки немає повідомлень.</td></tr>
                             {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            {% endif %}
+
+            <!-- Вкладка: КОРИСТУВАЧІ (Admin Only) -->
+            {% if active_tab == 'users' and session.get('role') == 'ADMIN' %}
+            <section class="w-full max-w-[95%] mx-auto">
+                <h2 class="text-3xl font-black mb-8 uppercase flex items-center gap-3">
+                    <i class="fas fa-users text-purple-400"></i> Управління Користувачами
+                </h2>
+                <div class="bg-white text-black rounded-3xl shadow-2xl overflow-hidden">
+                    <div class="table-wrapper">
+                        <table class="w-full text-left text-sm min-w-max">
+                            <thead class="bg-gray-100 border-b-2 border-black">
+                                <tr>
+                                    <th class="p-4 font-black uppercase whitespace-nowrap">ID</th>
+                                    <th class="p-4 font-black uppercase whitespace-nowrap">Email</th>
+                                    <th class="p-4 font-black uppercase whitespace-nowrap">Посада / Роль</th>
+                                    <th class="p-4 font-black uppercase min-w-[150px]">Company Name</th>
+                                    <th class="p-4 font-black uppercase min-w-[200px]">ПІБ (Прізвище, Ім'я, По-батькові)</th>
+                                    <th class="p-4 font-black uppercase min-w-[150px]">Курс і Спеціальність</th>
+                                    <th class="p-4 font-black uppercase min-w-[250px]">Контактна інформація</th>
+                                    <th class="p-4 font-black uppercase whitespace-nowrap">Статус</th>
+                                    <th class="p-4 font-black uppercase whitespace-nowrap">Дії</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                {% for u in all_users %}
+                                <tr class="hover:bg-gray-50 transition {% if u.status == 'blocked' %}bg-red-50 opacity-75{% endif %}">
+                                    <td class="p-4 font-bold whitespace-nowrap">{{ u.id }}</td>
+                                    <td class="p-4 font-medium text-blue-700 whitespace-nowrap">{{ u.email or '-' }}</td>
+                                    
+                                    <td class="p-4 whitespace-nowrap">
+                                        {% if u.role == 'COMPANY' %}
+                                            <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold">{{ u.position or 'Представник' }}</span>
+                                        {% elif u.role == 'ADMIN' %}
+                                            <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-bold">Адміністратор</span>
+                                        {% else %}
+                                            <span class="text-gray-400 text-xs">-</span>
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <td class="p-4 font-bold break-words whitespace-normal">
+                                        {% if u.role == 'COMPANY' %}{{ u.company_name or '-' }}{% else %}<span class="text-gray-400 text-xs">-</span>{% endif %}
+                                    </td>
+                                <td class="p-4 break-words whitespace-normal">
+                                    {% if u.role == 'STUDENT' %}
+                                        <b>{{ u.last_name }}</b> {{ u.first_name }} {{ u.patronymic }}
+                                    {% else %}<span class="text-gray-400 text-xs">-</span>{% endif %}
+                                </td>
+                                
+                                <td class="p-4 break-words whitespace-normal">
+                                    {% if u.role == 'STUDENT' %}
+                                        {% if u.course or u.specialty %}
+                                            <div class="font-bold whitespace-nowrap">{{ u.course or '?' }} курс</div>
+                                            <div class="text-xs text-red-600">{{ u.specialty or '-' }}</div>
+                                        {% else %}-{% endif %}
+                                    {% else %}<span class="text-gray-400 text-xs">-</span>{% endif %}
+                                </td>
+                                
+                                <td class="p-4 text-xs min-w-[250px] whitespace-normal break-words">
+                                    {{ u.contact_info or '-' }}
+                                </td>
+                                
+                                <td class="p-4 whitespace-nowrap">
+                                    {% if u.status == 'blocked' %}
+                                        <span class="bg-red-200 text-red-800 px-2 py-1 rounded text-xs font-black uppercase">Заблоковано</span>
+                                    {% else %}
+                                        <span class="bg-green-200 text-green-800 px-2 py-1 rounded text-xs font-black uppercase">Активний</span>
+                                    {% endif %}
+                                </td>
+                                
+                                <td class="p-4">
+                                    <div class="flex gap-2 items-center min-w-[200px]">
+                                        {% if u.id != session.get('user_id') %}
+                                            <form action="/admin/toggle_block" method="POST" class="inline-block m-0">
+                                                <input type="hidden" name="user_id" value="{{ u.id }}">
+                                                {% if u.status == 'blocked' %}
+                                                    <button class="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 text-xs font-bold uppercase whitespace-nowrap" title="Розблокувати"><i class="fas fa-unlock mr-1"></i> Розблок.</button>
+                                                {% else %}
+                                                    <button class="bg-orange-500 text-white px-3 py-2 rounded hover:bg-orange-600 text-xs font-bold uppercase whitespace-nowrap" title="Заблокувати" onclick="return confirm('Заблокувати користувача?');"><i class="fas fa-ban mr-1"></i> Блок.</button>
+                                                {% endif %}
+                                            </form>
+                                            <form action="/admin/delete_user" method="POST" class="inline-block m-0" onsubmit="return confirm('ОБЕРЕЖНО! Видалити користувача та всі його дані назавжди?');">
+                                                <input type="hidden" name="user_id" value="{{ u.id }}">
+                                                <button class="bg-red-700 text-white px-3 py-2 rounded hover:bg-black text-xs font-bold uppercase whitespace-nowrap" title="Видалити"><i class="fas fa-trash mr-1"></i> Видалити</button>
+                                            </form>
+                                        {% else %}
+                                            <span class="text-gray-400 text-xs font-bold whitespace-nowrap">Це ви</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
@@ -432,32 +529,46 @@ HTML_TEMPLATE = """
                         <!-- Загальні поля -->
                         <div class="grid md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl border">
                             <div>
-                                <label class="block font-bold text-xs uppercase mb-2 text-gray-500">Логін</label>
+                                <label class="label-text">Логін</label>
                                 <input type="text" value="{{ user_info.username }}" disabled class="w-full p-3 rounded-xl bg-gray-200 cursor-not-allowed font-mono">
                             </div>
                             <div>
-                                <label class="block font-bold text-xs uppercase mb-2 text-gray-500">Email</label>
+                                <label class="label-text">Email</label>
                                 <input type="email" name="email" value="{{ user_info.email }}" class="w-full p-3 rounded-xl bg-white font-bold border focus:border-red-500">
                             </div>
                         </div>
 
                         {% if user_info.role == 'STUDENT' %}
                         <div class="space-y-4">
-                            <div class="grid md:grid-cols-2 gap-4">
+                            <!-- ПІБ -->
+                            <div class="grid md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="label-text">Прізвище</label>
+                                    <input type="text" name="last_name" value="{{ profile_data.last_name or '' }}" class="w-full p-3 rounded-xl border">
+                                </div>
                                 <div>
                                     <label class="label-text">Ім'я</label>
                                     <input type="text" name="first_name" value="{{ profile_data.first_name or '' }}" class="w-full p-3 rounded-xl border">
                                 </div>
                                 <div>
-                                    <label class="label-text">Прізвище</label>
-                                    <input type="text" name="last_name" value="{{ profile_data.last_name or '' }}" class="w-full p-3 rounded-xl border">
+                                    <label class="label-text">По батькові</label>
+                                    <input type="text" name="patronymic" value="{{ profile_data.patronymic or '' }}" class="w-full p-3 rounded-xl border">
                                 </div>
                             </div>
                             
-                            <label class="label-text">Спеціальність</label>
-                            <input type="text" name="specialty" value="{{ profile_data.specialty or '' }}" class="w-full p-3 rounded-xl border" placeholder="Наприклад: Інженерія ПЗ">
-                            
-                            <div class="grid md:grid-cols-[auto_1fr] gap-4 items-start">
+                            <!-- Навчання -->
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="label-text">Курс</label>
+                                    <input type="number" name="course" value="{{ profile_data.course or '' }}" class="w-full p-3 rounded-xl border" placeholder="1-6">
+                                </div>
+                                <div>
+                                    <label class="label-text">Спеціальність</label>
+                                    <input type="text" name="specialty" value="{{ profile_data.specialty or '' }}" class="w-full p-3 rounded-xl border" placeholder="Наприклад: Інженерія ПЗ">
+                                </div>
+                            </div>
+
+                            <div class="grid md:grid-cols-[auto_1fr] gap-4 items-start pt-2">
                                 <img src="{{ profile_data.avatar }}" class="w-20 h-20 rounded-full border bg-gray-100 object-cover">
                                 <div>
                                     <label class="label-text">Посилання на фото (Аватар)</label>
@@ -468,8 +579,19 @@ HTML_TEMPLATE = """
                             <label class="label-text">Навички (через кому)</label>
                             <textarea name="skills" class="w-full p-3 rounded-xl border h-20" placeholder="Python, SQL, Figma...">{{ profile_data.skills or '' }}</textarea>
                             
-                            <label class="label-text">Посилання (GitHub, LinkedIn)</label>
-                            <input type="text" name="links" value="{{ profile_data.links or '' }}" class="w-full p-3 rounded-xl border">
+                            <hr class="my-4">
+                            <h3 class="font-black text-red-700 uppercase mb-2">Контакти та Зв'язок</h3>
+
+                            <div>
+                                <label class="label-text">Контактна інформація (Телефон, Telegram тощо)</label>
+                                <input type="text" name="contact_info" value="{{ profile_data.contact_info or '' }}" class="w-full p-3 rounded-xl border" placeholder="+380... або @username">
+                            </div>
+                            
+                            <div>
+                                <label class="label-text">Link (GitHub, LinkedIn, Портфоліо)</label>
+                                <input type="text" name="links" value="{{ profile_data.links or '' }}" class="w-full p-3 rounded-xl border" placeholder="https://github.com/...">
+                                <p class="text-xs text-gray-500 mt-1">Додайте посилання через кому, вони перетворяться на зручні іконки.</p>
+                            </div>
                         </div>
                         
                         {% elif user_info.role == 'COMPANY' %}
@@ -479,15 +601,24 @@ HTML_TEMPLATE = """
                                 <input type="text" name="company_name" value="{{ profile_data.company_name or '' }}" class="w-full p-3 rounded-xl border-2 border-blue-100 font-bold text-lg" placeholder="Назва вашої фірми">
                             </div>
 
+                            <div>
+                                <label class="label-text text-blue-800">Ваша Посада (Company Role)</label>
+                                <input type="text" name="position" value="{{ profile_data.position or '' }}" class="w-full p-3 rounded-xl border-2 border-blue-100 font-bold" placeholder="HR, Менеджер, Рекрутер, CEO...">
+                            </div>
+
                             <div class="grid md:grid-cols-[auto_1fr] gap-4 items-start bg-blue-50 p-4 rounded-xl">
                                 <img src="{{ profile_data.avatar }}" class="w-24 h-24 rounded-lg border bg-white object-contain">
                                 <div class="w-full">
                                     <label class="label-text text-blue-800">Логотип Компанії (URL)</label>
                                     <input type="text" name="avatar" value="{{ profile_data.avatar or '' }}" class="w-full p-3 rounded-xl border" placeholder="Вставте посилання на картинку логотипу...">
-                                    <p class="text-xs text-gray-500 mt-1">Рекомендуємо квадратне зображення</p>
                                 </div>
                             </div>
                             
+                            <div>
+                                <label class="label-text text-blue-800">Контактна інформація</label>
+                                <input type="text" name="contact_info" value="{{ profile_data.contact_info or '' }}" class="w-full p-3 rounded-xl border-2 border-blue-100" placeholder="Телефон, адреса офісу, або Telegram рекрутера...">
+                            </div>
+
                             <div>
                                 <label class="label-text text-blue-800">Опис Компанії / Вакансії</label>
                                 <textarea name="description" class="w-full p-3 rounded-xl border h-32" placeholder="Опишіть, чим займається ваша компанія і кого ви шукаєте...">{{ profile_data.description or '' }}</textarea>
@@ -514,7 +645,7 @@ HTML_TEMPLATE = """
             {% endif %}
 
         </div>
-        {% endif %} <!-- Кінець перевірки session -->
+        {% endif %}
 
     </main>
 
@@ -579,14 +710,20 @@ HTML_TEMPLATE = """
                         <span class="block text-xs font-bold uppercase text-gray-400 mb-1">Навички</span>
                         <p id="sv-skills" class="font-medium bg-white p-2 rounded border"></p>
                     </div>
+                    
+                    <div>
+                        <span class="block text-xs font-bold uppercase text-gray-400 mb-1">Контактна інформація</span>
+                        <p id="sv-contact-info" class="font-bold text-gray-800 bg-white p-2 rounded border truncate"></p>
+                    </div>
+
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <span class="block text-xs font-bold uppercase text-gray-400 mb-1">Контакти</span>
-                            <p id="sv-links" class="text-blue-600 underline truncate"></p>
+                            <span class="block text-xs font-bold uppercase text-gray-400 mb-1">Link (Мережі)</span>
+                            <p id="sv-links" class="text-blue-600 flex gap-3 flex-wrap mt-1"></p>
                         </div>
                         <div>
                             <span class="block text-xs font-bold uppercase text-gray-400 mb-1">Email</span>
-                            <p id="sv-email" class="text-gray-800 font-bold truncate"></p>
+                            <p id="sv-email" class="text-gray-800 font-bold truncate mt-1"></p>
                         </div>
                     </div>
                 </div>
@@ -611,10 +748,35 @@ HTML_TEMPLATE = """
                 .then(data => {
                     if(data.error) return alert(data.error);
                     document.getElementById('sv-avatar').src = data.avatar || '';
-                    document.getElementById('sv-name').innerText = (data.first_name || '') + ' ' + (data.last_name || '');
-                    document.getElementById('sv-spec').innerText = data.specialty || 'Студент';
+                    
+                    let fullName = [data.last_name, data.first_name, data.patronymic].filter(Boolean).join(' ');
+                    document.getElementById('sv-name').innerText = fullName || 'Студент';
+                    
+                    let specText = [];
+                    if(data.course) specText.push(data.course + ' курс');
+                    if(data.specialty) specText.push(data.specialty);
+                    document.getElementById('sv-spec').innerText = specText.join(', ') || 'Студент';
+                    
                     document.getElementById('sv-skills').innerText = data.skills || '-';
-                    document.getElementById('sv-links').innerText = data.links || '-';
+                    document.getElementById('sv-contact-info').innerText = data.contact_info || '-';
+                    
+                    // Обробка посилань у клікабельні іконки
+                    let linksHtml = '';
+                    if (data.links && data.links.trim() !== '') {
+                        let urls = data.links.split(',').map(l => l.trim());
+                        urls.forEach(url => {
+                            if (!url) return;
+                            let href = url.startsWith('http') ? url : 'https://' + url;
+                            let iconClass = 'fas fa-link';
+                            if (url.toLowerCase().includes('github')) iconClass = 'fab fa-github';
+                            if (url.toLowerCase().includes('linkedin')) iconClass = 'fab fa-linkedin';
+                            linksHtml += `<a href="${href}" target="_blank" class="text-2xl hover:text-red-600 transition" title="${url}"><i class="${iconClass}"></i></a>`;
+                        });
+                    } else {
+                        linksHtml = '-';
+                    }
+                    document.getElementById('sv-links').innerHTML = linksHtml;
+                    
                     document.getElementById('sv-email').innerText = data.email || '';
                     toggleModal('student-view-modal');
                 });
@@ -635,17 +797,31 @@ def index():
     active_tab = request.args.get('tab', 'ranking')
     db = get_db()
     
-    # Якщо не залогінений - показуємо тільки Лендінг (логіка в HTML шаблоні)
     if 'user_id' not in session:
         return render_template_string(HTML_TEMPLATE, active_tab='landing')
 
-    # Дані для студентів (Ranking)
+    # Ranking
     students = []
     if active_tab == 'ranking':
         cur = db.execute("SELECT s.*, u.email FROM students s JOIN users u ON s.user_id = u.id")
         students = [dict(row) for row in cur.fetchall()]
 
-    # Дані профілю
+    # Users Table for Admin
+    all_users = []
+    if active_tab == 'users' and session.get('role') == 'ADMIN':
+        query = """
+            SELECT u.id, u.username, u.email, u.role, u.status,
+                   s.first_name, s.last_name, s.patronymic, s.course, s.specialty, s.skills, s.links,
+                   c.company_name, c.description, c.position,
+                   COALESCE(s.contact_info, c.contact_info) as contact_info
+            FROM users u
+            LEFT JOIN students s ON u.id = s.user_id
+            LEFT JOIN companies c ON u.id = c.user_id
+            ORDER BY u.id DESC
+        """
+        all_users = [dict(row) for row in db.execute(query).fetchall()]
+
+    # Profile Data
     user_info = {}
     profile_data = {}
     if 'user_id' in session:
@@ -660,11 +836,10 @@ def index():
             cur = db.execute("SELECT * FROM companies WHERE user_id = ?", (target_id,))
             profile_data = dict(cur.fetchone() or {})
 
-    # Дані Invitations (Скринька)
+    # Invitations
     invitations = []
     pending_count = 0
     
-    # Лічильник нових повідомлень для меню
     if session.get('role') == 'STUDENT':
         count_res = db.execute("SELECT COUNT(*) as c FROM invitations i JOIN students s ON i.student_id = s.id WHERE s.user_id = ? AND i.status='pending'", (session['user_id'],)).fetchone()
         pending_count = count_res['c']
@@ -692,7 +867,6 @@ def index():
             invitations = [dict(row) for row in db.execute(query, (session['user_id'],)).fetchall()]
             
         elif session.get('role') == 'STUDENT':
-            # Студент бачить запрошення, адресовані йому
             query = """
                 SELECT i.*, c.company_name, c.avatar as company_avatar
                 FROM invitations i
@@ -706,6 +880,7 @@ def index():
     return render_template_string(HTML_TEMPLATE, 
                                   active_tab=active_tab, 
                                   students=students, 
+                                  all_users=all_users,
                                   user_info=user_info, 
                                   profile_data=profile_data,
                                   invitations=invitations,
@@ -750,6 +925,10 @@ def login():
     user = db.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password)).fetchone()
     
     if user:
+        if dict(user).get('status') == 'blocked':
+            flash("Ваш акаунт було заблоковано адміністратором.")
+            return redirect('/')
+            
         session['user_id'] = user['id']
         session['role'] = user['role']
         session['username'] = user['username']
@@ -782,25 +961,30 @@ def update_profile():
     
     if role == 'STUDENT':
         db.execute("""
-            UPDATE students SET first_name=?, last_name=?, specialty=?, skills=?, links=?, avatar=?
+            UPDATE students SET first_name=?, last_name=?, patronymic=?, course=?, specialty=?, skills=?, links=?, contact_info=?, avatar=?
             WHERE user_id=?
         """, (
             request.form.get('first_name'),
             request.form.get('last_name'),
+            request.form.get('patronymic'),
+            request.form.get('course'),
             request.form.get('specialty'),
             request.form.get('skills'),
             request.form.get('links'),
+            request.form.get('contact_info'),
             request.form.get('avatar'),
             target_id
         ))
     elif role == 'COMPANY':
         db.execute("""
-            UPDATE companies SET company_name=?, description=?, avatar=?
+            UPDATE companies SET company_name=?, description=?, avatar=?, position=?, contact_info=?
             WHERE user_id=?
         """, (
             request.form.get('company_name'),
             request.form.get('description'),
-            request.form.get('avatar'), # Оновлення аватарки компанії
+            request.form.get('avatar'),
+            request.form.get('position'),
+            request.form.get('contact_info'),
             target_id
         ))
     
@@ -830,8 +1014,6 @@ def send_invite():
     comp_row = db.execute("SELECT id FROM companies WHERE user_id = ?", (session['user_id'],)).fetchone()
     comp_id = comp_row['id'] if comp_row else None
     
-    # Адмін теж може слати, але company_id буде None (або можна створити фейкову компанію для адміна)
-    
     db.execute("""
         INSERT INTO invitations (student_id, company_id, user_id, message, status)
         VALUES (?, ?, ?, ?, 'pending')
@@ -846,12 +1028,11 @@ def respond_invite():
     if session.get('role') != 'STUDENT': return redirect('/')
     
     invite_id = request.form.get('invite_id')
-    action = request.form.get('action') # 'accept' or 'reject'
+    action = request.form.get('action') 
     
     new_status = 'accepted' if action == 'accept' else 'rejected'
     
     db = get_db()
-    # Перевірка чи цей інвайт належить цьому студенту
     db.execute("UPDATE invitations SET status = ? WHERE id = ?", (new_status, invite_id))
     db.commit()
     
@@ -878,6 +1059,38 @@ def flag_invite():
     db.commit()
     flash("Ви позначили цю заявку. Адміністратор отримає сповіщення!")
     return redirect('/?tab=invitations')
+
+@app.route('/admin/toggle_block', methods=['POST'])
+def admin_toggle_block():
+    if session.get('role') != 'ADMIN': return redirect('/')
+    user_id = request.form.get('user_id')
+    db = get_db()
+    db.execute("UPDATE users SET status = CASE WHEN status = 'blocked' THEN 'active' ELSE 'blocked' END WHERE id = ?", (user_id,))
+    db.commit()
+    flash("Статус користувача змінено.")
+    return redirect('/?tab=users')
+
+@app.route('/admin/delete_user', methods=['POST'])
+def admin_delete_user():
+    if session.get('role') != 'ADMIN': return redirect('/')
+    user_id = request.form.get('user_id')
+    db = get_db()
+    
+    db.execute("""
+        DELETE FROM invitations 
+        WHERE user_id = ? 
+           OR student_id IN (SELECT id FROM students WHERE user_id = ?) 
+           OR company_id IN (SELECT id FROM companies WHERE user_id = ?)
+    """, (user_id, user_id, user_id))
+    
+    db.execute("DELETE FROM students WHERE user_id = ?", (user_id,))
+    db.execute("DELETE FROM companies WHERE user_id = ?", (user_id,))
+    db.execute("DELETE FROM admins WHERE user_id = ?", (user_id,))
+    db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    db.commit()
+    
+    flash("Користувача та всі його дані успішно видалено назавжди.")
+    return redirect('/?tab=users')
 
 @app.route('/api/student/<int:user_id>')
 def get_student_api(user_id):
