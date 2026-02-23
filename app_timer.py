@@ -145,12 +145,60 @@ HTML_TEMPLATE = """
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         :root { --ukd-red: #4a0404; --ukd-bright: #8b0000; }
-        body { background-color: var(--ukd-red); color: white; font-family: 'Inter', sans-serif; }
-        .card { background: white; color: black; border-left: 8px solid black; transition: 0.3s; }
+        body {
+    background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), 
+                      url('https://ukd.edu.ua/sites/default/files/styles/16/public/2024-10/DSC_3783.jpg?h=295b0d92&itok=mx-I0n3V');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+}
+  .card { background: white; color: black; border-left: 8px solid black; transition: 0.3s; }
         .card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
-        .nav-btn.active { border-bottom: 2px solid white; font-weight: bold; color: white; }
-        .nav-btn { color: #ccc; transition: 0.3s; }
-        .nav-btn:hover { color: white; }
+.nav-btn {
+    position: relative;
+    color: rgba(255, 255, 255, 0.7) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    padding: 8px 16px !important;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* Ефект при наведенні */
+.nav-btn:hover {
+    color: #fff !important;
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px); /* Кнопка трохи підстрибує */
+}
+
+/* Динамічна лінія під кнопкою */
+.nav-btn::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background: #ff4d4d; /* Твій фірмовий червоний */
+    transition: all 0.3s ease;
+    transform: translateX(-50%);
+}
+
+.nav-btn:hover::after {
+    width: 70%; /* Лінія розширюється при наведенні */
+}
+
+/* Стиль для активної кнопки */
+.nav-btn.active {
+    color: #fff !important;
+    background: rgba(255, 77, 77, 0.15); /* Легкий червоний відблиск */
+    font-weight: 700 !important;
+}
+
+.nav-btn.active::after {
+    width: 80%;
+    background: #ff4d4d;
+}
         input, select, textarea { border: 2px solid #ddd; transition: 0.3s; color: black; }
         input:focus, select:focus, textarea:focus { border-color: var(--ukd-bright); outline: none; }
         .modal-bg { background: rgba(0,0,0,0.9); }
@@ -161,66 +209,74 @@ HTML_TEMPLATE = """
 <body class="min-h-screen flex flex-col">
 
     <!-- Навігація -->
-    <nav class="bg-black p-4 sticky top-0 z-50 shadow-2xl border-b border-white/10">
-        <div class="container mx-auto flex flex-wrap justify-between items-center">
-            <div class="flex items-center space-x-3 cursor-pointer" onclick="window.location.href='/'">
-                <div class="bg-red-700 p-2 rounded-lg"><i class="fas fa-graduation-cap text-white"></i></div>
-                <span class="text-xl font-black uppercase tracking-tighter">УКД <span class="text-red-600">Talent</span></span>
+ <nav class="p-4 sticky top-0 z-50 shadow-2xl" style="background-color: #AC0632 !important; border-bottom: 2px solid rgba(255,255,255,0.1);">
+    <div class="container mx-auto flex items-center justify-between">
+        
+        <div class="flex items-center space-x-3 cursor-pointer shrink-0" onclick="window.location.href='/'">
+            <div class="bg-white p-2 rounded-lg flex items-center justify-center" style="width: 38px; height: 38px;">
+                <i class="fas fa-graduation-cap" style="color: #AC0632;"></i>
             </div>
-            
+            <span class="text-xl font-black uppercase tracking-tighter text-white">УКД TALENT</span>
+        </div>
+
+        <div class="flex items-center ml-auto">
             {% if session.get('user_id') %}
-            <div class="hidden md:flex space-x-6 items-center flex-grow justify-center">
-                <a href="/?tab=home" class="nav-btn px-2 py-1 {{ 'active' if active_tab == 'home' else '' }}">
-                    <i class="fas fa-home mr-1"></i> Головна
-                </a>
-                <a href="/?tab=ranking" class="nav-btn px-2 py-1 {{ 'active' if active_tab == 'ranking' else '' }}">
-                    <i class="fas fa-list-ol mr-1"></i> Рейтинг
-                </a>
-                
-                {% if session.get('role') == 'ADMIN' %}
-                    <a href="/?tab=invitations" class="nav-btn px-2 py-1 {{ 'active' if active_tab == 'invitations' else '' }} text-yellow-400">
-                        <i class="fas fa-shield-alt mr-1"></i> Адмін Панель
+                <div class="hidden md:flex items-center space-x-1">
+                    <a href="/?tab=home" class="px-3 py-2 text-white font-bold rounded-xl transition-all hover:bg-white/20 flex items-center {{ 'bg-white/20' if active_tab == 'home' else '' }}">
+                        <i class="fas fa-home mr-2"></i> Головна
                     </a>
-                    <a href="/?tab=users" class="nav-btn px-2 py-1 {{ 'active' if active_tab == 'users' else '' }} text-purple-400">
-                        <i class="fas fa-users mr-1"></i> Користувачі
+                    <a href="/?tab=ranking" class="px-3 py-2 text-white font-bold rounded-xl transition-all hover:bg-white/20 flex items-center {{ 'bg-white/20' if active_tab == 'ranking' else '' }}">
+                        <i class="fas fa-list-ol mr-2"></i> Рейтинг
                     </a>
-                {% endif %}
+                    
+                    {% if session.get('role') == 'ADMIN' %}
+                        <a href="/?tab=invitations" class="px-3 py-2 text-white font-bold rounded-xl transition-all hover:bg-white/20 flex items-center {{ 'bg-white/20' if active_tab == 'invitations' else '' }}">
+                            <i class="fas fa-shield-alt mr-2"></i> Адмін Панель
+                        </a>
+                        <a href="/?tab=users" class="px-3 py-2 text-white font-bold rounded-xl transition-all hover:bg-white/20 flex items-center {{ 'bg-white/20' if active_tab == 'users' else '' }}">
+                            <i class="fas fa-users mr-2"></i> Користувачі
+                        </a>
+                    {% endif %}
 
-                {% if session.get('role') == 'COMPANY' %}
-                     <a href="/?tab=invitations" class="nav-btn px-2 py-1 {{ 'active' if active_tab == 'invitations' else '' }}">
-                        <i class="fas fa-paper-plane mr-1"></i> Мої Запити
-                    </a>
-                {% endif %}
-                
-                {% if session.get('role') == 'STUDENT' %}
-                     <a href="/?tab=invitations" class="nav-btn px-2 py-1 {{ 'active' if active_tab == 'invitations' else '' }}">
-                        <i class="fas fa-inbox mr-1"></i> Мої Запрошення 
-                        {% if pending_count > 0 %}
-                        <span class="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full ml-1 animate-pulse">{{ pending_count }}</span>
-                        {% endif %}
-                    </a>
-                {% endif %}
+                    {% if session.get('role') == 'COMPANY' %}
+                         <a href="/?tab=invitations" class="px-3 py-2 text-white font-bold rounded-xl transition-all hover:bg-white/20 flex items-center {{ 'bg-white/20' if active_tab == 'invitations' else '' }}">
+                            <i class="fas fa-paper-plane mr-2"></i> Мої Запити
+                        </a>
+                    {% endif %}
+                    
+                    {% if session.get('role') == 'STUDENT' %}
+                         <a href="/?tab=invitations" class="px-3 py-2 text-white font-bold rounded-xl transition-all hover:bg-white/20 flex items-center {{ 'bg-white/20' if active_tab == 'invitations' else '' }}">
+                            <i class="fas fa-inbox mr-2"></i> Мої Запрошення 
+                            {% if pending_count > 0 %}
+                            <span class="bg-white text-[#AC0632] text-[10px] px-1.5 py-0.5 rounded-full ml-1 font-black animate-pulse">{{ pending_count }}</span>
+                            {% endif %}
+                        </a>
+                    {% endif %}
 
-                <a href="/?tab=profile" class="nav-btn px-2 py-1 {{ 'active' if active_tab == 'profile' else '' }}">
-                    <i class="fas fa-user-circle mr-1"></i> Мій Профіль
-                </a>
-            </div>
-
-            <div class="flex items-center space-x-4">
-                <div class="text-right hidden sm:block">
-                    <div class="text-xs text-gray-400 uppercase font-bold">{{ session.get('role') }}</div>
-                    <div class="font-bold">{{ session.get('username') }}</div>
+                    <a href="/?tab=profile" class="px-3 py-2 text-white font-bold rounded-xl transition-all hover:bg-white/20 flex items-center {{ 'bg-white/20' if active_tab == 'profile' else '' }}">
+                        <i class="fas fa-user-circle mr-2"></i> Мій Профіль
+                    </a>
                 </div>
-                <a href="/logout" class="bg-white/10 hover:bg-red-600 p-2 rounded-full transition"><i class="fas fa-sign-out-alt"></i></a>
-            </div>
+
+                <div class="flex items-center space-x-3 ml-4 pl-4 border-l border-white/20">
+                    <div class="text-right hidden sm:block">
+                        <div class="text-[10px] text-white/70 uppercase font-black">{{ session.get('role') }}</div>
+                        <div class="text-sm text-white font-bold leading-none">{{ session.get('username') }}</div>
+                    </div>
+                    <a href="/logout" class="bg-white/10 hover:bg-white/30 p-2 rounded-full text-white transition">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+
             {% else %}
-            <div>
-                 <button onclick="toggleModal('login-modal')" class="bg-white text-black px-5 py-1.5 rounded-full font-bold hover:bg-gray-200">Вхід</button>
-                 <button onclick="toggleModal('register-modal')" class="border border-white text-white px-5 py-1.5 rounded-full font-bold hover:bg-white hover:text-black ml-2">Реєстрація</button>
-            </div>
+                <div class="flex items-center space-x-2">
+                     <button onclick="toggleModal('login-modal')" class="bg-white text-[#AC0632] px-5 py-1.5 rounded-xl font-bold hover:bg-gray-100 transition-all">Вхід</button>
+                     <button onclick="toggleModal('register-modal')" class="border-2 border-white text-white px-5 py-1.5 rounded-xl font-bold hover:bg-white hover:text-[#AC0632] transition-all">Реєстрація</button>
+                </div>
             {% endif %}
         </div>
-        
+    </div>
+</nav>
         <!-- Мобільне меню -->
         {% if session.get('user_id') %}
         <div class="md:hidden flex justify-around mt-4 border-t border-white/10 pt-2 overflow-x-auto gap-4">
@@ -272,7 +328,7 @@ HTML_TEMPLATE = """
 
             <!-- Вкладка: ГОЛОВНА (Home) -->
             {% if active_tab == 'home' %}
-            <section class="max-w-6xl mx-auto text-center py-8">
+          <section class="max-w-6xl mx-auto text-center py-8">
                 <h1 class="text-4xl md:text-6xl font-black uppercase mb-6 drop-shadow-lg tracking-tighter">
                     Ласкаво просимо до <span class="text-red-600">УКД Talent</span>
                 </h1>
@@ -280,6 +336,7 @@ HTML_TEMPLATE = """
                     Платформа, що об'єднує найкращих студентів та провідних роботодавців для побудови успішного майбутнього.
                 </p>
 
+    </section>
                 <div class="grid md:grid-cols-2 gap-8 text-left mb-16">
                     <div class="bg-white text-black p-8 rounded-3xl shadow-2xl border-l-8 border-red-700 transition hover:-translate-y-2">
                         <div class="text-red-700 text-4xl mb-4"><i class="fas fa-university"></i></div>
@@ -317,50 +374,56 @@ HTML_TEMPLATE = """
                 </h2>
                 
                 <!-- ПАНЕЛЬ ПОШУКУ ТА ФІЛЬТРІВ -->
-                <form method="GET" action="/" class="bg-white text-black p-6 rounded-2xl shadow-xl mb-8 flex flex-wrap gap-4 items-end">
-                    <input type="hidden" name="tab" value="ranking">
-                    
-                    <div class="flex-grow min-w-[200px]">
-                        <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Пошук (Ім'я, Навички)</label>
-                        <div class="relative">
-                            <i class="fas fa-search absolute left-3 top-3.5 text-gray-400"></i>
-                            <input type="text" name="search" value="{{ current_filters.search }}" class="w-full pl-10 pr-3 py-3 rounded-xl border-2 border-gray-200" placeholder="Наприклад: Python, Дизайн...">
-                        </div>
-                    </div>
-                    
-                    <div class="w-full md:w-auto">
-                        <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Курс</label>
-                        <select name="course" class="w-full p-3 rounded-xl border-2 border-gray-200 bg-white">
-                            <option value="">Всі курси</option>
-                            {% for c in unique_courses %}
-                            <option value="{{ c }}" {% if current_filters.course == c|string %}selected{% endif %}>{{ c }} курс</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+                <form method="GET" action="/" class="bg-black/40 backdrop-blur-xl text-white p-6 rounded-[30px] border border-white/10 shadow-2xl mb-8 flex flex-wrap gap-4 items-end">
+    <input type="hidden" name="tab" value="ranking">
+    
+    <div class="flex-grow min-w-[200px]">
+        <label class="block text-xs font-black uppercase text-gray-400 mb-2 ml-1 tracking-widest">Пошук (Ім'я, Навички)</label>
+        <div class="relative">
+            <i class="fas fa-search absolute left-4 top-4 text-gray-500"></i>
+            <input type="text" name="search" value="{{ current_filters.search }}" 
+                   class="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white/5 border border-white/10 focus:border-red-500/50 focus:bg-white/10 transition-all outline-none text-white placeholder-gray-500" 
+                   placeholder="Наприклад: Python, Дизайн...">
+        </div>
+    </div>
+    
+    <div class="w-full md:w-auto">
+        <label class="block text-xs font-black uppercase text-gray-400 mb-2 ml-1 tracking-widest">Курс</label>
+        <select name="course" class="w-full p-3.5 rounded-2xl bg-white/5 border border-white/10 focus:border-red-500/50 focus:bg-white/10 transition-all outline-none text-white appearance-none cursor-pointer">
+            <option value="" class="bg-gray-900">Всі курси</option>
+            {% for c in unique_courses %}
+            <option value="{{ c }}" {% if current_filters.course == c|string %}selected{% endif %} class="bg-gray-900">{{ c }} курс</option>
+            {% endfor %}
+        </select>
+    </div>
 
-                    <div class="w-full md:w-auto">
-                        <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Спеціальність</label>
-                        <select name="specialty" class="w-full p-3 rounded-xl border-2 border-gray-200 bg-white">
-                            <option value="">Всі спеціальності</option>
-                            {% for s in unique_specialties %}
-                            <option value="{{ s }}" {% if current_filters.specialty == s %}selected{% endif %}>{{ s }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+    <div class="w-full md:w-auto">
+        <label class="block text-xs font-black uppercase text-gray-400 mb-2 ml-1 tracking-widest">Спеціальність</label>
+        <select name="specialty" class="w-full p-3.5 rounded-2xl bg-white/5 border border-white/10 focus:border-red-500/50 focus:bg-white/10 transition-all outline-none text-white appearance-none cursor-pointer">
+            <option value="" class="bg-gray-900">Всі спеціальності</option>
+            {% for s in unique_specialties %}
+            <option value="{{ s }}" {% if current_filters.specialty == s %}selected{% endif %} class="bg-gray-900">{{ s }}</option>
+            {% endfor %}
+        </select>
+    </div>
 
-                    <div class="w-full md:w-auto">
-                        <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Сортування</label>
-                        <select name="sort" class="w-full p-3 rounded-xl border-2 border-gray-200 bg-white">
-                            <option value="desc" {% if current_filters.sort == 'desc' %}selected{% endif %}>Рейтинг: За спаданням (Топ)</option>
-                            <option value="asc" {% if current_filters.sort == 'asc' %}selected{% endif %}>Рейтинг: За зростанням</option>
-                        </select>
-                    </div>
+    <div class="w-full md:w-auto">
+        <label class="block text-xs font-black uppercase text-gray-400 mb-2 ml-1 tracking-widest">Сортування</label>
+        <select name="sort" class="w-full p-3.5 rounded-2xl bg-white/5 border border-white/10 focus:border-red-500/50 focus:bg-white/10 transition-all outline-none text-white appearance-none cursor-pointer">
+            <option value="desc" {% if current_filters.sort == 'desc' %}selected{% endif %} class="bg-gray-900">Рейтинг: Топ</option>
+            <option value="asc" {% if current_filters.sort == 'asc' %}selected{% endif %} class="bg-gray-900">Рейтинг: Зростання</option>
+        </select>
+    </div>
 
-                    <div class="w-full md:w-auto flex gap-2">
-                        <button type="submit" class="bg-red-700 text-white px-6 py-3 rounded-xl font-black uppercase tracking-wide hover:bg-black transition"><i class="fas fa-filter mr-1"></i> Знайти</button>
-                        <a href="/?tab=ranking" class="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold uppercase hover:bg-gray-300 transition text-center" title="Скинути фільтри"><i class="fas fa-times"></i></a>
-                    </div>
-                </form>
+    <div class="w-full md:w-auto flex gap-3">
+        <button type="submit" class="bg-red-600 hover:bg-red-500 text-white px-8 py-3.5 rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-red-900/20 transition-all active:scale-95 flex items-center gap-2">
+            <i class="fas fa-filter"></i> Знайти
+        </button>
+        <a href="/?tab=ranking" class="bg-white/10 hover:bg-white/20 text-white px-5 py-3.5 rounded-2xl transition-all active:scale-95 flex items-center justify-center shadow-lg" title="Скинути">
+            <i class="fas fa-sync-alt"></i>
+        </a>
+    </div>
+</form>
 
                 <!-- СПИСОК СТУДЕНТІВ -->
                 {% if students %}
@@ -416,110 +479,129 @@ HTML_TEMPLATE = """
             {% endif %}
 
             <!-- Вкладка: СКРИНЬКА (Invitations) -->
-            {% if active_tab == 'invitations' %}
-            <section class="max-w-5xl mx-auto">
-                <h2 class="text-3xl font-black mb-8 uppercase flex items-center gap-3">
-                    {% if session.get('role') == 'ADMIN' %} <i class="fas fa-shield-alt text-yellow-400"></i> Панель Керування Заявками
-                    {% elif session.get('role') == 'STUDENT' %} <i class="fas fa-inbox text-white"></i> Мої Запрошення на Роботу
-                    {% else %} <i class="fas fa-paper-plane text-blue-400"></i> Надіслані Пропозиції {% endif %}
-                </h2>
-                
-                <div class="bg-white text-black rounded-3xl shadow-2xl overflow-hidden">
-                    <div class="table-wrapper">
-                        <table class="w-full text-left min-w-max">
-                            <thead class="bg-gray-100 border-b-2 border-black">
-                                <tr>
-                                {% if session.get('role') != 'COMPANY' %}<th class="p-4 font-black uppercase">Від Кого (Компанія)</th>{% endif %}
-                                {% if session.get('role') != 'STUDENT' %}<th class="p-4 font-black uppercase">Кому (Студент)</th>{% endif %}
-                                <th class="p-4 font-black uppercase">Повідомлення</th>
-                                <th class="p-4 font-black uppercase">Статус</th>
-                                <th class="p-4 font-black uppercase">Дії</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-                            {% for inv in invitations %}
-                            <tr class="hover:bg-gray-50 transition {% if session.get('role') == 'ADMIN' and inv.flagged %}bg-red-50 border-l-4 border-red-600{% endif %}">
-                                {% if session.get('role') != 'COMPANY' %}
-                                <td class="p-4">
-                                    <div class="flex items-center space-x-3">
-                                        <img src="{{ inv.company_avatar or 'https://cdn-icons-png.flaticon.com/512/3061/3061341.png' }}" class="w-10 h-10 rounded-full border border-gray-300">
-                                        <div>
-                                            <span class="font-bold text-blue-800 block">{{ inv.company_name or 'Невідома Компанія' }}</span>
-                                            <span class="text-xs text-gray-500">{{ inv.created_at }}</span>
-                                        </div>
-                                    </div>
-                                </td>
-                                {% endif %}
-                                
-                                {% if session.get('role') != 'STUDENT' %}
-                                <td class="p-4 font-bold">{{ inv.last_name }} {{ inv.first_name }}</td>
-                                {% endif %}
-                                
-                                <td class="p-4 text-sm text-gray-600 italic max-w-xs whitespace-normal">"{{ inv.message }}"</td>
-                                
-                                <td class="p-4">
-                                    {% if inv.status == 'pending' %}
-                                        <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-black uppercase animate-pulse">Очікує</span>
-                                    {% elif inv.status == 'accepted' %}
-                                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-black uppercase"><i class="fas fa-check mr-1"></i> Прийнято</span>
-                                    {% elif inv.status == 'rejected' %}
-                                        <span class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-black uppercase"><i class="fas fa-times mr-1"></i> Відхилено</span>
-                                    {% endif %}
-                                    
-                                    {% if session.get('role') == 'ADMIN' and inv.flagged %}
-                                        <div class="mt-2 text-red-600 text-xs font-black uppercase animate-bounce"><i class="fas fa-flag"></i> Увага адміна!</div>
-                                    {% endif %}
-                                </td>
+           {% if active_tab == 'invitations' %}
+<section class="max-w-6xl mx-auto px-4">
+    
+    <h2 class="text-3xl font-black mb-8 uppercase flex items-center gap-3 text-white">
+        {% if session.get('role') == 'ADMIN' %} 
+            <i class="fas fa-shield-alt text-white"></i> Панель Керування Заявками
+        {% elif session.get('role') == 'STUDENT' %} 
+            <i class="fas fa-inbox text-white"></i> Мої Запрошення
+        {% else %} 
+            <i class="fas fa-paper-plane text-white"></i> Надіслані Пропозиції 
+        {% endif %}
+    </h2>
 
-                                <td class="p-4">
-                                    <div class="flex gap-2 items-center flex-wrap min-w-[150px]">
-                                        {% if session.get('role') == 'STUDENT' and inv.status == 'pending' %}
-                                            <form action="/respond_invite" method="POST" class="inline-block m-0">
-                                                <input type="hidden" name="invite_id" value="{{ inv.id }}">
-                                                <input type="hidden" name="action" value="accept">
-                                                <button class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-xs font-bold uppercase whitespace-nowrap">Так</button>
-                                            </form>
-                                            <form action="/respond_invite" method="POST" class="inline-block m-0">
-                                                <input type="hidden" name="invite_id" value="{{ inv.id }}">
-                                                <input type="hidden" name="action" value="reject">
-                                                <button class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-xs font-bold uppercase whitespace-nowrap">Ні</button>
-                                            </form>
-                                        {% elif session.get('role') == 'STUDENT' %}
-                                            <span class="text-gray-400 text-xs uppercase font-bold">Закрито</span>
-                                        {% endif %}
-                                        
-                                        {% if session.get('role') == 'ADMIN' %}
-                                            <form action="/delete_invite" method="POST" class="inline-block m-0" onsubmit="return confirm('Видалити цю заявку назавжди?');">
-                                                <input type="hidden" name="invite_id" value="{{ inv.id }}">
-                                                <button class="bg-black text-white px-3 py-1 rounded hover:bg-red-700 text-xs font-bold uppercase whitespace-nowrap" title="Видалити"><i class="fas fa-trash"></i></button>
-                                            </form>
-                                        {% endif %}
-                                        
-                                        {% if session.get('role') == 'COMPANY' %}
-                                            {% if not inv.flagged %}
-                                                <form action="/flag_invite" method="POST" class="inline-block m-0">
-                                                    <input type="hidden" name="invite_id" value="{{ inv.id }}">
-                                                    <button class="bg-yellow-400 text-black px-3 py-1 rounded hover:bg-yellow-500 text-xs font-bold uppercase whitespace-nowrap" title="Покликати адміна для вирішення питань"><i class="fas fa-flag"></i> Покликати Адміна</button>
-                                                </form>
-                                            {% else %}
-                                                <span class="text-red-600 text-xs font-bold uppercase whitespace-nowrap"><i class="fas fa-flag"></i> Адмін сповіщений</span>
-                                            {% endif %}
-                                        {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                            {% if not invitations %}
-                            <tr><td colspan="5" class="p-8 text-center text-gray-400">У вас поки немає повідомлень.</td></tr>
+    {% if session.get('role') == 'ADMIN' %}
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white p-6 rounded-3xl shadow-xl border-l-8 border-[#AC0632]">
+            <div class="text-gray-500 text-xs font-bold uppercase">Усього заявок</div>
+            <div class="text-3xl font-black text-black">{{ invitations|length }}</div>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-xl border-l-8 border-green-500">
+            <div class="text-gray-500 text-xs font-bold uppercase">Прийнято</div>
+            <div class="text-3xl font-black text-black">
+                {{ invitations|selectattr('status', 'equalto', 'accepted')|list|length }}
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-xl border-l-8 border-yellow-500">
+            <div class="text-gray-500 text-xs font-bold uppercase">Очікують</div>
+            <div class="text-3xl font-black text-black">
+                {{ invitations|selectattr('status', 'equalto', 'pending')|list|length }}
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-3xl shadow-xl border-l-8 border-red-600 animate-pulse">
+            <div class="text-gray-500 text-xs font-bold uppercase">Потребують уваги</div>
+            <div class="text-3xl font-black text-red-600">
+                {{ invitations|selectattr('flagged', 'equalto', true)|list|length }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="bg-white text-black rounded-3xl shadow-2xl overflow-hidden border border-white/10">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left min-w-max">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        {% if session.get('role') != 'COMPANY' %}<th class="p-5 font-black uppercase text-xs text-gray-400">Від Кого</th>{% endif %}
+                        {% if session.get('role') != 'STUDENT' %}<th class="p-5 font-black uppercase text-xs text-gray-400">Кому (Студент)</th>{% endif %}
+                        <th class="p-5 font-black uppercase text-xs text-gray-400">Повідомлення</th>
+                        <th class="p-5 font-black uppercase text-xs text-gray-400">Статус</th>
+                        <th class="p-5 font-black uppercase text-xs text-gray-400 text-center">Дії</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for inv in invitations %}
+                    <tr class="hover:bg-gray-50/80 transition-all {% if session.get('role') == 'ADMIN' and inv.flagged %}bg-red-50/50{% endif %}">
+                        {% if session.get('role') != 'COMPANY' %}
+                        <td class="p-5">
+                            <div class="flex items-center space-x-3">
+                                <img src="{{ inv.company_avatar or 'https://cdn-icons-png.flaticon.com/512/3061/3061341.png' }}" class="w-10 h-10 rounded-xl object-cover shadow-sm">
+                                <div>
+                                    <span class="font-bold text-black block leading-tight">{{ inv.company_name or 'Невідома Компанія' }}</span>
+                                    <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{{ inv.created_at }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        {% endif %}
+                        
+                        {% if session.get('role') != 'STUDENT' %}
+                        <td class="p-5">
+                            <span class="font-bold text-gray-800">{{ inv.last_name }} {{ inv.first_name }}</span>
+                        </td>
+                        {% endif %}
+                        
+                        <td class="p-5">
+                            <div class="text-sm text-gray-600 italic max-w-xs truncate" title="{{ inv.message }}">"{{ inv.message }}"</div>
+                        </td>
+                        
+                        <td class="p-5">
+                            {% if inv.status == 'pending' %}
+                                <span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase">Очікує</span>
+                            {% elif inv.status == 'accepted' %}
+                                <span class="bg-green-100 text-green-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase">Прийнято</span>
+                            {% elif inv.status == 'rejected' %}
+                                <span class="bg-red-100 text-red-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase">Відхилено</span>
                             {% endif %}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-            {% endif %}
+                        </td>
+
+                        <td class="p-5">
+                            <div class="flex gap-2 justify-center">
+                                {% if session.get('role') == 'STUDENT' and inv.status == 'pending' %}
+                                    <form action="/respond_invite" method="POST" class="m-0">
+                                        <input type="hidden" name="invite_id" value="{{ inv.id }}">
+                                        <input type="hidden" name="action" value="accept">
+                                        <button class="bg-[#AC0632] text-white px-4 py-1.5 rounded-lg hover:bg-black transition-all text-xs font-bold uppercase">Так</button>
+                                    </form>
+                                    <form action="/respond_invite" method="POST" class="m-0">
+                                        <input type="hidden" name="invite_id" value="{{ inv.id }}">
+                                        <input type="hidden" name="action" value="reject">
+                                        <button class="border-2 border-gray-200 text-gray-500 px-4 py-1.5 rounded-lg hover:bg-gray-100 transition-all text-xs font-bold uppercase">Ні</button>
+                                    </form>
+                                {% endif %}
+                                
+                                {% if session.get('role') == 'ADMIN' %}
+                                    <form action="/delete_invite" method="POST" class="m-0" onsubmit="return confirm('Видалити назавжди?');">
+                                        <input type="hidden" name="invite_id" value="{{ inv.id }}">
+                                        <button class="w-9 h-9 flex items-center justify-center bg-gray-100 text-gray-400 hover:bg-[#AC0632] hover:text-white rounded-xl transition-all">
+                                            <i class="fas fa-trash-alt text-sm"></i>
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endif %}
 
             <!-- Вкладка: КОРИСТУВАЧІ (Admin Only) -->
-            {% if active_tab == 'users' and session.get('role') == 'ADMIN' %}
+                      {% if active_tab == 'users' and session.get('role') == 'ADMIN' %}
             <section class="w-full max-w-[95%] mx-auto">
                 <h2 class="text-3xl font-black mb-8 uppercase flex items-center gap-3">
                     <i class="fas fa-users text-purple-400"></i> Управління Користувачами
