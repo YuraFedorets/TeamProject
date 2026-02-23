@@ -5,7 +5,7 @@ from datetime import datetime
 
 # Налаштування додатка
 app = Flask(__name__)
-app.secret_key = 'ukd_recruitment_secret_key_v4'
+app.secret_key = 'ukd_recruitment_secret_key_v5'
 DATABASE = 'ukd_database.db'
 
 # --- РОБОТА З БАЗОЮ ДАНИХ (SQLite) ---
@@ -53,6 +53,7 @@ def init_db():
                 skills TEXT,
                 links TEXT,
                 contact_info TEXT,
+                rating INTEGER DEFAULT 0,
                 avatar TEXT DEFAULT 'https://cdn-icons-png.flaticon.com/512/354/354637.png',
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )
@@ -62,6 +63,9 @@ def init_db():
         for col in ['patronymic', 'course', 'contact_info']:
             try: cursor.execute(f"ALTER TABLE students ADD COLUMN {col} TEXT")
             except sqlite3.OperationalError: pass
+            
+        try: cursor.execute("ALTER TABLE students ADD COLUMN rating INTEGER DEFAULT 0")
+        except sqlite3.OperationalError: pass
 
         # 3. Companies
         cursor.execute('''
@@ -82,7 +86,6 @@ def init_db():
             try: cursor.execute(f"ALTER TABLE companies ADD COLUMN {col} TEXT")
             except sqlite3.OperationalError: pass
             
-        # Якщо avatar був порожнім при доданні, ставимо дефолт
         try: cursor.execute("ALTER TABLE companies ALTER COLUMN avatar SET DEFAULT 'https://cdn-icons-png.flaticon.com/512/3061/3061341.png'")
         except sqlite3.OperationalError: pass
 
@@ -167,6 +170,9 @@ HTML_TEMPLATE = """
             
             {% if session.get('user_id') %}
             <div class="hidden md:flex space-x-6 items-center flex-grow justify-center">
+                <a href="/?tab=home" class="nav-btn px-2 py-1 {{ 'active' if active_tab == 'home' else '' }}">
+                    <i class="fas fa-home mr-1"></i> Головна
+                </a>
                 <a href="/?tab=ranking" class="nav-btn px-2 py-1 {{ 'active' if active_tab == 'ranking' else '' }}">
                     <i class="fas fa-list-ol mr-1"></i> Рейтинг
                 </a>
@@ -217,11 +223,12 @@ HTML_TEMPLATE = """
         
         <!-- Мобільне меню -->
         {% if session.get('user_id') %}
-        <div class="md:hidden flex justify-around mt-4 border-t border-white/10 pt-2">
-            <a href="/?tab=ranking" class="text-sm"><i class="fas fa-list"></i> Рейтинг</a>
-            <a href="/?tab=invitations" class="text-sm"><i class="fas fa-inbox"></i> Inbox</a>
-            {% if session.get('role') == 'ADMIN' %}<a href="/?tab=users" class="text-sm text-purple-400"><i class="fas fa-users"></i> Юзери</a>{% endif %}
-            <a href="/?tab=profile" class="text-sm"><i class="fas fa-user"></i> Профіль</a>
+        <div class="md:hidden flex justify-around mt-4 border-t border-white/10 pt-2 overflow-x-auto gap-4">
+            <a href="/?tab=home" class="text-sm whitespace-nowrap"><i class="fas fa-home"></i> Головна</a>
+            <a href="/?tab=ranking" class="text-sm whitespace-nowrap"><i class="fas fa-list"></i> Рейтинг</a>
+            <a href="/?tab=invitations" class="text-sm whitespace-nowrap"><i class="fas fa-inbox"></i> Inbox</a>
+            {% if session.get('role') == 'ADMIN' %}<a href="/?tab=users" class="text-sm text-purple-400 whitespace-nowrap"><i class="fas fa-users"></i> Юзери</a>{% endif %}
+            <a href="/?tab=profile" class="text-sm whitespace-nowrap"><i class="fas fa-user"></i> Профіль</a>
         </div>
         {% endif %}
     </nav>
@@ -263,43 +270,135 @@ HTML_TEMPLATE = """
         <!-- ВНУТРІШНЯ ЧАСТИНА САЙТУ -->
         <div class="container mx-auto px-4 py-8">
 
+            <!-- Вкладка: ГОЛОВНА (Home) -->
+            {% if active_tab == 'home' %}
+            <section class="max-w-6xl mx-auto text-center py-8">
+                <h1 class="text-4xl md:text-6xl font-black uppercase mb-6 drop-shadow-lg tracking-tighter">
+                    Ласкаво просимо до <span class="text-red-600">УКД Talent</span>
+                </h1>
+                <p class="text-lg md:text-xl mb-12 font-light text-gray-200 max-w-3xl mx-auto">
+                    Платформа, що об'єднує найкращих студентів та провідних роботодавців для побудови успішного майбутнього.
+                </p>
+
+                <div class="grid md:grid-cols-2 gap-8 text-left mb-16">
+                    <div class="bg-white text-black p-8 rounded-3xl shadow-2xl border-l-8 border-red-700 transition hover:-translate-y-2">
+                        <div class="text-red-700 text-4xl mb-4"><i class="fas fa-university"></i></div>
+                        <h2 class="text-2xl font-black uppercase mb-4">Університет Короля Данила (УКД)</h2>
+                        <p class="text-gray-700 font-medium leading-relaxed">
+                            Університет Короля Данила — це сучасний заклад вищої освіти, який фокусується на практичних навичках, інноваціях та успішному працевлаштуванні випускників. Ми створюємо умови для розвитку талантів та тісно співпрацюємо з провідними компаніями, щоб наші студенти отримували реальний професійний досвід ще під час навчання.
+                        </p>
+                    </div>
+                    
+                    <div class="bg-white text-black p-8 rounded-3xl shadow-2xl border-l-8 border-black transition hover:-translate-y-2">
+                        <div class="text-black text-4xl mb-4"><i class="fas fa-project-diagram"></i></div>
+                        <h2 class="text-2xl font-black uppercase mb-4">Про Проєкт</h2>
+                        <p class="text-gray-700 font-medium leading-relaxed">
+                            <b>УКД Recruitment Platform</b> — це інноваційне рішення для спрощення процесу пошуку першої роботи для студентів та молодих спеціалістів. 
+                            Студенти можуть створювати професійні портфоліо та вказувати свої навички, а компанії отримують зручний інструмент для пошуку кандидатів за спеціальностями, рейтингом та можуть надсилати їм прямі запрошення на роботу.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-8 border-t border-white/20 pt-12 pb-6">
+                    <p class="text-gray-400 font-bold uppercase mb-6">Відкритий вихідний код проєкту на GitHub:</p>
+                    <a href="https://github.com/YuraFedorets/TeamProject/tree/V3" target="_blank" class="inline-flex items-center gap-3 bg-gray-800 hover:bg-black text-white px-8 py-4 rounded-full font-black uppercase transition shadow-xl border border-gray-600 hover:border-gray-400 transform hover:scale-105">
+                        <i class="fab fa-github text-3xl"></i> 
+                        TeamProject / V3
+                    </a>
+                </div>
+            </section>
+            {% endif %}
+
             <!-- Вкладка: РЕЙТИНГ (Ranking) -->
             {% if active_tab == 'ranking' %}
-            <section class="max-w-6xl mx-auto">
+            <section class="max-w-7xl mx-auto">
                 <h2 class="text-4xl font-black mb-8 uppercase tracking-tighter border-b-4 border-white pb-2">
-                    Активні Студенти
+                    Рейтинг Студентів
                 </h2>
                 
+                <!-- ПАНЕЛЬ ПОШУКУ ТА ФІЛЬТРІВ -->
+                <form method="GET" action="/" class="bg-white text-black p-6 rounded-2xl shadow-xl mb-8 flex flex-wrap gap-4 items-end">
+                    <input type="hidden" name="tab" value="ranking">
+                    
+                    <div class="flex-grow min-w-[200px]">
+                        <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Пошук (Ім'я, Навички)</label>
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-3.5 text-gray-400"></i>
+                            <input type="text" name="search" value="{{ current_filters.search }}" class="w-full pl-10 pr-3 py-3 rounded-xl border-2 border-gray-200" placeholder="Наприклад: Python, Дизайн...">
+                        </div>
+                    </div>
+                    
+                    <div class="w-full md:w-auto">
+                        <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Курс</label>
+                        <select name="course" class="w-full p-3 rounded-xl border-2 border-gray-200 bg-white">
+                            <option value="">Всі курси</option>
+                            {% for c in unique_courses %}
+                            <option value="{{ c }}" {% if current_filters.course == c|string %}selected{% endif %}>{{ c }} курс</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="w-full md:w-auto">
+                        <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Спеціальність</label>
+                        <select name="specialty" class="w-full p-3 rounded-xl border-2 border-gray-200 bg-white">
+                            <option value="">Всі спеціальності</option>
+                            {% for s in unique_specialties %}
+                            <option value="{{ s }}" {% if current_filters.specialty == s %}selected{% endif %}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="w-full md:w-auto">
+                        <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Сортування</label>
+                        <select name="sort" class="w-full p-3 rounded-xl border-2 border-gray-200 bg-white">
+                            <option value="desc" {% if current_filters.sort == 'desc' %}selected{% endif %}>Рейтинг: За спаданням (Топ)</option>
+                            <option value="asc" {% if current_filters.sort == 'asc' %}selected{% endif %}>Рейтинг: За зростанням</option>
+                        </select>
+                    </div>
+
+                    <div class="w-full md:w-auto flex gap-2">
+                        <button type="submit" class="bg-red-700 text-white px-6 py-3 rounded-xl font-black uppercase tracking-wide hover:bg-black transition"><i class="fas fa-filter mr-1"></i> Знайти</button>
+                        <a href="/?tab=ranking" class="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold uppercase hover:bg-gray-300 transition text-center" title="Скинути фільтри"><i class="fas fa-times"></i></a>
+                    </div>
+                </form>
+
+                <!-- СПИСОК СТУДЕНТІВ -->
                 {% if students %}
-                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {% for std in students %}
-                    <div class="card rounded-2xl p-6 relative group overflow-hidden">
+                    <div class="card rounded-2xl p-6 relative group overflow-hidden flex flex-col h-full">
+                        <!-- Зірочка рейтингу -->
+                        <div class="absolute top-4 right-4 bg-yellow-400 text-black px-2 py-1 rounded-lg font-black text-sm shadow-md" title="Рейтинг студента">
+                            <i class="fas fa-star text-xs"></i> {{ std.rating or 0 }}
+                        </div>
+
                         <div class="flex items-center space-x-4 mb-4">
                             <img src="{{ std.avatar }}" class="w-16 h-16 rounded-full border-2 border-black object-cover bg-gray-200">
-                            <div>
-                                <h3 class="text-xl font-black uppercase">{{ std.last_name }} {{ std.first_name }}</h3>
-                                <p class="text-sm text-gray-500 font-bold">{{ std.course }} курс, {{ std.specialty }}</p>
+                            <div class="pr-8"> <!-- Відступ для зірочки -->
+                                <h3 class="text-lg font-black uppercase leading-tight">{{ std.last_name }} {{ std.first_name }}</h3>
+                                <p class="text-xs text-gray-500 font-bold mt-1">{{ std.course or '?' }} курс, {{ std.specialty or 'Спеціальність не вказана' }}</p>
                             </div>
                         </div>
                         
-                        <div class="mb-4 h-16 overflow-hidden">
-                            <p class="text-xs font-bold uppercase text-gray-400 mb-1">Навички:</p>
-                            <div class="flex flex-wrap gap-1">
+                        <div class="mb-4 flex-grow overflow-hidden">
+                            <p class="text-[10px] font-bold uppercase text-gray-400 mb-1">Навички:</p>
+                            <div class="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
                                 {% for skill in (std.skills or '').split(',') %}
                                     {% if skill.strip() %}
-                                    <span class="bg-gray-200 text-black px-2 py-0.5 rounded text-xs font-bold">{{ skill.strip() }}</span>
+                                    <span class="bg-gray-200 text-black px-2 py-0.5 rounded text-[10px] font-bold">{{ skill.strip() }}</span>
                                     {% endif %}
                                 {% endfor %}
+                                {% if not std.skills %}<span class="text-gray-400 text-xs italic">Немає даних</span>{% endif %}
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-2 mt-4">
-                            <button onclick="openStudentProfile({{ std.user_id }})" class="bg-black text-white py-2 rounded-lg font-bold text-sm uppercase hover:bg-gray-800 transition">
+                        <div class="grid grid-cols-2 gap-2 mt-auto pt-4 border-t border-gray-100">
+                            <button onclick="openStudentProfile({{ std.user_id }})" class="bg-black text-white py-2 rounded-lg font-bold text-xs uppercase hover:bg-gray-800 transition">
                                 <i class="fas fa-eye mr-1"></i> Профіль
                             </button>
                             
                             {% if session.get('role') in ['COMPANY', 'ADMIN'] %}
-                            <button onclick="openInviteModal({{ std.id }}, '{{ std.first_name }}')" class="bg-red-700 text-white py-2 rounded-lg font-bold text-sm uppercase hover:bg-red-800 transition">
+                            <button onclick="openInviteModal({{ std.id }}, '{{ std.first_name }}')" class="bg-red-700 text-white py-2 rounded-lg font-bold text-xs uppercase hover:bg-red-800 transition">
                                 <i class="fas fa-handshake mr-1"></i> Найняти
                             </button>
                             {% endif %}
@@ -308,7 +407,10 @@ HTML_TEMPLATE = """
                     {% endfor %}
                 </div>
                 {% else %}
-                    <div class="text-center opacity-50 text-xl py-20">Поки що немає зареєстрованих студентів.</div>
+                    <div class="text-center opacity-50 text-xl py-20 bg-black/20 rounded-2xl border border-white/10">
+                        <i class="fas fa-search mb-4 text-4xl"></i><br>
+                        Студентів за такими критеріями не знайдено.
+                    </div>
                 {% endif %}
             </section>
             {% endif %}
@@ -327,6 +429,7 @@ HTML_TEMPLATE = """
                         <table class="w-full text-left min-w-max">
                             <thead class="bg-gray-100 border-b-2 border-black">
                                 <tr>
+                                {% if session.get('role') != 'COMPANY' %}<th class="p-4 font-black uppercase">Від Кого (Компанія)</th>{% endif %}
                                 {% if session.get('role') != 'STUDENT' %}<th class="p-4 font-black uppercase">Кому (Студент)</th>{% endif %}
                                 <th class="p-4 font-black uppercase">Повідомлення</th>
                                 <th class="p-4 font-black uppercase">Статус</th>
@@ -539,6 +642,15 @@ HTML_TEMPLATE = """
                         </div>
 
                         {% if user_info.role == 'STUDENT' %}
+                        
+                        <!-- ПАНЕЛЬ АДМІНІСТРАТОРА (Редагування рейтингу) -->
+                        {% if session.get('role') == 'ADMIN' %}
+                        <div class="bg-yellow-50 p-4 rounded-xl border border-yellow-400 mb-6 shadow-inner">
+                            <label class="label-text text-yellow-800"><i class="fas fa-star text-yellow-500"></i> Рейтинг Студента (Тільки для Адміністратора)</label>
+                            <input type="number" name="rating" value="{{ profile_data.rating or 0 }}" class="w-full p-3 rounded-xl border-2 border-yellow-300 bg-white font-black text-xl" placeholder="Введіть бали рейтингу...">
+                        </div>
+                        {% endif %}
+
                         <div class="space-y-4">
                             <!-- ПІБ -->
                             <div class="grid md:grid-cols-3 gap-4">
@@ -794,16 +906,62 @@ HTML_TEMPLATE = """
 @app.route('/')
 def index():
     init_db() 
-    active_tab = request.args.get('tab', 'ranking')
+    active_tab = request.args.get('tab', 'home') # Змінено вкладку за замовчуванням на 'home'
     db = get_db()
     
     if 'user_id' not in session:
         return render_template_string(HTML_TEMPLATE, active_tab='landing')
 
-    # Ranking
+    # Отримання параметрів фільтрації для Ranking
+    search_query = request.args.get('search', '').strip()
+    course_filter = request.args.get('course', '').strip()
+    specialty_filter = request.args.get('specialty', '').strip()
+    sort_order = request.args.get('sort', 'desc') # за замовчуванням рейтинг по спаданню (топ найкращих)
+
+    # Зберігаємо поточні фільтри для підстановки в HTML шаблоні
+    current_filters = {
+        'search': search_query,
+        'course': course_filter,
+        'specialty': specialty_filter,
+        'sort': sort_order
+    }
+
+    # Підготовка списків для dropdown-меню (витягуємо унікальні курси та спеціальності)
+    unique_courses = []
+    unique_specialties = []
+    
+    if active_tab == 'ranking':
+        c_cur = db.execute("SELECT DISTINCT course FROM students WHERE course IS NOT NULL AND course != '' ORDER BY course")
+        unique_courses = [r['course'] for r in c_cur.fetchall()]
+        
+        s_cur = db.execute("SELECT DISTINCT specialty FROM students WHERE specialty IS NOT NULL AND specialty != '' ORDER BY specialty")
+        unique_specialties = [r['specialty'] for r in s_cur.fetchall()]
+
+    # Формування запиту з фільтрами (Ranking)
     students = []
     if active_tab == 'ranking':
-        cur = db.execute("SELECT s.*, u.email FROM students s JOIN users u ON s.user_id = u.id")
+        base_query = "SELECT s.*, u.email FROM students s JOIN users u ON s.user_id = u.id WHERE u.status != 'blocked'"
+        params = []
+        
+        if search_query:
+            base_query += " AND (s.first_name LIKE ? OR s.last_name LIKE ? OR s.skills LIKE ? OR s.specialty LIKE ?)"
+            like_search = f"%{search_query}%"
+            params.extend([like_search, like_search, like_search, like_search])
+            
+        if course_filter:
+            base_query += " AND s.course = ?"
+            params.append(course_filter)
+            
+        if specialty_filter:
+            base_query += " AND s.specialty = ?"
+            params.append(specialty_filter)
+            
+        if sort_order == 'asc':
+            base_query += " ORDER BY s.rating ASC"
+        else:
+            base_query += " ORDER BY s.rating DESC"
+
+        cur = db.execute(base_query, params)
         students = [dict(row) for row in cur.fetchall()]
 
     # Users Table for Admin
@@ -884,7 +1042,10 @@ def index():
                                   user_info=user_info, 
                                   profile_data=profile_data,
                                   invitations=invitations,
-                                  pending_count=pending_count)
+                                  pending_count=pending_count,
+                                  current_filters=current_filters,
+                                  unique_courses=unique_courses,
+                                  unique_specialties=unique_specialties)
 
 # --- АВТОРИЗАЦІЯ ---
 
@@ -960,6 +1121,11 @@ def update_profile():
     db.execute("UPDATE users SET email = ? WHERE id = ?", (request.form.get('email'), target_id))
     
     if role == 'STUDENT':
+        # Якщо ми під адміном, отримуємо переданий рейтинг (якщо ні - лишаємо старий)
+        rating_val = request.form.get('rating')
+        if session.get('role') == 'ADMIN' and rating_val is not None:
+            db.execute("UPDATE students SET rating=? WHERE user_id=?", (int(rating_val), target_id))
+
         db.execute("""
             UPDATE students SET first_name=?, last_name=?, patronymic=?, course=?, specialty=?, skills=?, links=?, contact_info=?, avatar=?
             WHERE user_id=?
