@@ -1,85 +1,45 @@
+#"https://docs.google.com/spreadsheets/d/1OmPRt9XXVSnn7lcruKcThq6pVnzO_muoRmePd_W1Ojk/export?format=csv"
 import json
 import os
-from datetime import datetime
+import csv
+import requests
+from io import StringIO
+from datetime import datetime, timedelta
 from flask import Flask, render_template_string, request, jsonify, session, redirect
 
 app = Flask(__name__)
-app.secret_key = 'ukd_secret_key_6000_v3'
+app.secret_key = 'ukd_secret_key_6000_full_sync'
 
 # Файли бази даних
 DATABASE_FILE = 'database.json'
+# Ваше посилання для експорту (автоматично конвертується в CSV)
+SHEET_EXPORT_URL = "https://docs.google.com/spreadsheets/d/1OmPRt9XXVSnn7lcruKcThq6pVnzO_muoRmePd_W1Ojk/export?format=csv"
 
-# Початкові дані з повною структурою
+# Початкові дані (Розширено до 5 розробників)
 DEFAULT_DATA = {
     "users": [
         {
-            "id": 1, 
-            "username": "admin", 
-            "password": "123", 
-            "role": "ADMIN", 
-            "fullname": "Адміністратор", 
-            "email": "admin@ukd.edu.ua", 
-            "avatar": "https://cdn-icons-png.flaticon.com/512/6024/6024190.png",
-            "room": "Деканат"
+            "id": 1, "username": "admin", "password": "123", "role": "ADMIN", 
+            "fullname": "Адміністратор", "email": "admin@ukd.edu.ua", 
+            "avatar": "https://cdn-icons-png.flaticon.com/512/6024/6024190.png", "room": "Деканат"
         },
         {
-            "id": 2, 
-            "username": "teacher", 
-            "password": "123", 
-            "role": "TEACHER", 
-            "fullname": "проф. Іваненко О.М.", 
-            "email": "ivanenko@ukd.edu.ua", 
-            "avatar": "https://cdn-icons-png.flaticon.com/512/1995/1995531.png", 
-            "room": "402"
-        },
-        {
-            "id": 3, 
-            "username": "student", 
-            "password": "123", 
-            "role": "STUDENT", 
-            "fullname": "Іван Студент", 
-            "email": "student@ukd.edu.ua", 
-            "avatar": "https://cdn-icons-png.flaticon.com/512/354/354637.png"
+            "id": 2, "username": "teacher", "password": "123", "role": "TEACHER", 
+            "fullname": "проф. Іваненко О.М.", "email": "ivanenko@ukd.edu.ua", 
+            "avatar": "https://cdn-icons-png.flaticon.com/512/1995/1995531.png", "room": "402"
         }
     ],
     "subjects": [
-        {"id": 1, "name": "Вища математика", "teacher_id": 2},
-        {"id": 2, "name": "Основи програмування", "teacher_id": 2}
+        {"id": 1, "name": "Загальновійськова підготовка", "teacher_id": 2},
+        {"id": 2, "name": "Програмування", "teacher_id": 2}
     ],
-    "absences": [
-        {"id": 1, "student_id": 3, "subject_id": 1, "deadline": "2026-12-31T23:59", "status": "active"}
-    ],
+    "absences": [],
     "creators": [
-        {
-            "name": "Олександр", 
-            "role": "Backend Lead", 
-            "desc": "Архітектор серверної частини. Відповідає за безпеку даних та міграції бази даних.", 
-            "skills": "Python, Flask, JSON Security"
-        },
-        {
-            "name": "Марія", 
-            "role": "UI/UX Designer", 
-            "desc": "Стиліст інтерфейсу. Створила темно-червону гамму університету УКД.", 
-            "skills": "Figma, Tailwind, Color Theory"
-        },
-        {
-            "name": "Дмитро", 
-            "role": "Frontend Dev", 
-            "desc": "Майстер інтерактивності. Розробив систему таймерів та акордеонів.", 
-            "skills": "JS, DOM API, Animations"
-        },
-        {
-            "name": "Олена", 
-            "role": "QA Engineer", 
-            "desc": "Головний тестувальник. Знайшла та допомогла виправити критичні помилки KeyError.", 
-            "skills": "Manual Testing, Debugging"
-        },
-        {
-            "name": "Артем", 
-            "role": "Data Analyst", 
-            "desc": "Займається структуруванням інформації про предмети та кабінети.", 
-            "skills": "Data Mining, Excel Integration"
-        }
+        {"name": "Олександр", "role": "Backend Lead", "desc": "Архітектор серверної частини та безпеки даних.", "skills": "Python, Flask, JSON, SQL", "avatar": ""},
+        {"name": "Марія", "role": "UI/UX Designer", "desc": "Дизайнер інтерфейсу. Створила стиль УКД.", "skills": "Tailwind, Figma, Adobe Suite", "avatar": ""},
+        {"name": "Дмитро", "role": "Frontend Dev", "desc": "Майстер інтерактивності та таймерів.", "skills": "JS, Animations, React, CSS3", "avatar": ""},
+        {"name": "Олена", "role": "QA Engineer", "desc": "Тестування системи на помилки та стабільність.", "skills": "Unit Testing, Debugging, QA Docs", "avatar": ""},
+        {"name": "Артем", "role": "Data Architect", "desc": "Оптимізація збереження даних та безпека профілів.", "skills": "JSON, Security Protocols, Excel Sync", "avatar": "https://cdn-icons-png.flaticon.com/512/616/616438.png"}
     ]
 }
 
@@ -90,30 +50,79 @@ def load_data():
     try:
         with open(DATABASE_FILE, 'r', encoding='utf-8') as f:
             data = json.load(f)
-            
-            # --- Міграція даних для запобігання KeyError ---
+            # Міграція та перевірка полів
             for u in data.get('users', []):
-                if 'email' not in u: u['email'] = f"{u['username']}@ukd.edu.ua"
+                if 'email' not in u: u['email'] = f"{u.get('username', 'user')}@ukd.edu.ua"
                 if 'avatar' not in u: u['avatar'] = "https://cdn-icons-png.flaticon.com/512/354/354637.png"
-                if 'room' not in u: u['room'] = "Не вказано"
+                if 'fullname' not in u: u['fullname'] = u.get('username', 'Користувач')
             
-            for s in data.get('subjects', []):
-                if 'teacher_id' not in s: s['teacher_id'] = 1
-            
-            for a in data.get('absences', []):
-                if 'deadline' not in a: a['deadline'] = "2024-01-01T00:00"
-                if 'student_id' not in a: a['student_id'] = 0
-            
-            if 'creators' not in data: data['creators'] = DEFAULT_DATA['creators']
+            # Якщо в базі менше 5 творців, оновлюємо їх до повного складу
+            if 'creators' not in data or len(data.get('creators', [])) < 5:
+                data['creators'] = DEFAULT_DATA['creators']
             
             return data
-    except Exception as e:
-        print(f"Error loading database: {e}")
+    except:
         return DEFAULT_DATA
 
 def save_data(data):
     with open(DATABASE_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
+
+def sync_data_from_sheets():
+    db = load_data()
+    try:
+        response = requests.get(SHEET_EXPORT_URL, timeout=15)
+        response.encoding = 'utf-8'
+        if response.status_code != 200:
+            return False, f"Помилка доступу: {response.status_code}"
+        
+        csv_reader = csv.reader(StringIO(response.text))
+        rows = list(csv_reader)
+        
+        users_added = 0
+        absences_added = 0
+        subject = db['subjects'][0] # Дефолтний предмет
+        
+        for i in range(4, len(rows)):
+            row = rows[i]
+            if not row or len(row) < 2: continue
+            
+            fullname = row[1].strip()
+            if not fullname or fullname.isdigit(): continue
+
+            student = next((u for u in db['users'] if u.get('fullname') == fullname), None)
+            if not student:
+                student = {
+                    "id": len(db['users']) + 1,
+                    "username": f"std_{len(db['users'])}",
+                    "password": "123",
+                    "role": "STUDENT",
+                    "fullname": fullname,
+                    "email": f"std_{len(db['users'])}@ukd.edu.ua",
+                    "avatar": "https://cdn-icons-png.flaticon.com/512/354/354637.png",
+                    "course": "1", "specialty": "ІПЗ", "institution": "Університет"
+                }
+                db['users'].append(student)
+                users_added += 1
+
+            for cell_idx in range(2, len(row)):
+                if row[cell_idx].strip().lower() == 'н':
+                    deadline = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%dT23:59")
+                    exists = any(a for a in db['absences'] if a.get('student_id') == student['id'] and a.get('subject_id') == subject['id'])
+                    if not exists:
+                        db['absences'].append({
+                            "id": len(db['absences']) + 1,
+                            "student_id": student['id'],
+                            "subject_id": subject['id'],
+                            "deadline": deadline,
+                            "status": "active"
+                        })
+                        absences_added += 1
+        
+        save_data(db)
+        return True, f"Синхронізація успішна! Додано студентів: {users_added}, виявлено Н: {absences_added}."
+    except Exception as e:
+        return False, f"Помилка: {str(e)}"
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -127,19 +136,31 @@ HTML_TEMPLATE = """
     <style>
         :root { --ukd-red: #4a0404; --ukd-bright: #8b0000; }
         body { background-color: var(--ukd-red); color: white; font-family: 'Inter', sans-serif; }
-        .card { background: white; color: black; border-left: 8px solid black; transition: all 0.3s ease; }
-        .card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        .card { background: white; color: black; border-left: 8px solid black; transition: 0.3s; }
         .nav-btn.active { border-bottom: 2px solid white; font-weight: bold; }
-        .admin-section { background: rgba(255, 255, 255, 0.05); border-radius: 20px; padding: 25px; border: 1px solid rgba(255,255,255,0.1); }
-        
-        /* Accordion Logic */
-        .accordion-item { border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .accordion-content { max-height: 0; overflow: hidden; transition: all 0.5s cubic-bezier(0,1,0,1); }
-        .accordion-item.active .accordion-content { max-height: 1000px; padding-bottom: 20px; transition: all 0.5s cubic-bezier(1,0,1,0); }
-        .chevron { transition: transform 0.3s; }
+        .timer-badge { background: var(--ukd-bright); color: white; padding: 4px 12px; border-radius: 8px; font-weight: bold; font-family: monospace; }
+        .accordion-content { max-height: 0; overflow: hidden; transition: 0.4s ease-out; }
+        .accordion-item.active .accordion-content { max-height: 600px; padding-top: 20px; }
         .accordion-item.active .chevron { transform: rotate(180deg); }
-        
-        .timer-badge { background: var(--ukd-bright); color: white; padding: 5px 15px; border-radius: 50px; font-weight: 800; font-family: monospace; }
+        .process-link {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #fff;
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 50px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 12px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            transition: 0.3s;
+            z-index: 100;
+        }
+        .process-link:hover { transform: scale(1.1); background: var(--ukd-bright); color: #fff; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -148,13 +169,11 @@ HTML_TEMPLATE = """
     <nav class="bg-black p-4 sticky top-0 z-50 shadow-2xl">
         <div class="container mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3 cursor-pointer" onclick="showTab('main')">
-                <div class="bg-red-700 p-2 rounded-xl shadow-lg shadow-red-900/40">
-                    <i class="fas fa-hourglass-half text-white text-xl"></i>
-                </div>
+                <div class="bg-red-700 p-2 rounded-lg"><i class="fas fa-hourglass-half text-white"></i></div>
                 <span class="text-xl font-black uppercase tracking-tighter">Таймер но 6 тисяч</span>
             </div>
             
-            <div class="hidden md:flex space-x-8 items-center">
+            <div class="hidden md:flex space-x-6 items-center flex-grow justify-center">
                 <button onclick="showTab('main')" id="btn-main" class="nav-btn active px-2 py-1">Головна</button>
                 {% if session.get('role') %}
                     <button onclick="showTab('timers')" id="btn-timers" class="nav-btn px-2 py-1">Мої Н</button>
@@ -164,60 +183,47 @@ HTML_TEMPLATE = """
                     <button onclick="showTab('profile')" id="btn-profile" class="nav-btn px-2 py-1">Профіль</button>
                 {% endif %}
                 <button onclick="showTab('creators')" id="btn-creators" class="nav-btn px-2 py-1">Творці</button>
-                
+            </div>
+
+            <div class="flex items-center space-x-4">
                 {% if session.get('username') %}
-                    <a href="/logout" class="text-red-500 hover:text-white transition"><i class="fas fa-sign-out-alt text-xl"></i></a>
+                    <div class="flex items-center space-x-2">
+                        <img src="{{ current_user.get('avatar', '') }}" class="w-8 h-8 rounded-full border border-white/50">
+                        <a href="/logout" class="text-red-500 hover:text-white transition ml-10"><i class="fas fa-sign-out-alt text-xl"></i></a>
+                    </div>
                 {% else %}
-                    <button onclick="toggleLogin(true)" class="bg-white text-black px-5 py-1.5 rounded-full font-bold hover:bg-red-200 transition">Вхід</button>
+                    <button onclick="toggleLogin(true)" class="bg-white text-black px-5 py-1.5 rounded-full font-bold">Вхід</button>
                 {% endif %}
             </div>
         </div>
     </nav>
 
-    <main class="container mx-auto px-4 py-12 flex-grow">
-        
+    <main class="container mx-auto px-4 py-12 flex-grow relative">
         <!-- Головна сторінка -->
         <section id="tab-main" class="tab-content max-w-4xl mx-auto">
-            <div class="text-center mb-16">
-                <h1 class="text-6xl font-black mb-6 tracking-tighter uppercase">УКД ПЛАТФОРМА</h1>
-                <p class="text-xl opacity-60">Прозора система моніторингу академічних успіхів</p>
+            <div class="text-center mb-12">
+                <h1 class="text-6xl font-black mb-4 uppercase tracking-tighter">УКД ПЛАТФОРМА</h1>
+                <p class="opacity-60 italic">Офіційний сервіс моніторингу заборгованостей</p>
             </div>
-
             <div class="space-y-6">
-                <div class="accordion-item bg-black/20 rounded-2xl p-2 border border-white/5">
-                    <div class="flex justify-between items-center p-6 cursor-pointer" onclick="this.parentElement.classList.toggle('active')">
-                        <h3 class="text-2xl font-bold flex items-center"><i class="fas fa-info-circle mr-4 text-red-500"></i> Про проект</h3>
-                        <i class="fas fa-chevron-down chevron"></i>
+                <div class="accordion-item bg-black/30 rounded-2xl p-6 border border-white/10" onclick="this.classList.toggle('active')">
+                    <div class="flex justify-between items-center cursor-pointer">
+                        <h3 class="text-2xl font-bold italic"><i class="fas fa-info-circle mr-3"></i>Про проект</h3>
+                        <i class="fas fa-chevron-down chevron transition-transform"></i>
                     </div>
-                    <div class="accordion-content px-6 text-lg opacity-80 leading-relaxed">
-                        Сайт створено для студентів Університету Короля Данила. Ми прагнемо зробити процес відпрацювань зрозумілим та автоматизованим. Ви більше не забудете про дедлайни, адже таймер працює 24/7.
-                    </div>
-                </div>
-
-                <div class="accordion-item bg-black/20 rounded-2xl p-2 border border-white/5">
-                    <div class="flex justify-between items-center p-6 cursor-pointer" onclick="this.parentElement.classList.toggle('active')">
-                        <h3 class="text-2xl font-bold flex items-center"><i class="fas fa-university mr-4 text-red-500"></i> Правила університету</h3>
-                        <i class="fas fa-chevron-down chevron"></i>
-                    </div>
-                    <div class="accordion-content px-6 text-lg opacity-80 leading-relaxed">
-                        <ul class="list-disc ml-6 space-y-3">
-                            <li>Відпрацювання "Н" повинно відбутися протягом 2-х тижнів з моменту пропуску.</li>
-                            <li>Викладач має право призначити додаткові завдання залежно від складності теми.</li>
-                            <li>Інформація про кабінет та пошту викладача доступна у вкладці "Мої Н".</li>
-                        </ul>
+                    <div class="accordion-content opacity-70 text-lg">
+                        "Таймер но 6 тисяч" - це інноваційна система для студентів УКД, яка дозволяє в реальному часі відстежувати терміни відпрацювання Н.
                     </div>
                 </div>
-
-                <div class="accordion-item bg-black/20 rounded-2xl p-2 border border-white/5">
-                    <div class="flex justify-between items-center p-6 cursor-pointer" onclick="this.parentElement.classList.toggle('active')">
-                        <h3 class="text-2xl font-bold flex items-center"><i class="fas fa-play-circle mr-4 text-red-500"></i> Навчальний гайд</h3>
-                        <i class="fas fa-chevron-down chevron"></i>
+                <div class="accordion-item bg-black/30 rounded-2xl p-6 border border-white/10" onclick="this.classList.toggle('active')">
+                    <div class="flex justify-between items-center cursor-pointer">
+                        <h3 class="text-2xl font-bold italic"><i class="fas fa-video mr-3"></i>Відео-гайд</h3>
+                        <i class="fas fa-chevron-down chevron transition-transform"></i>
                     </div>
-                    <div class="accordion-content px-6 text-center py-6">
-                        <p class="mb-6 opacity-80">Перегляньте коротке відео про те, як працювати з інтерфейсом:</p>
-                        <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" class="inline-flex items-center space-x-3 bg-red-600 px-8 py-3 rounded-full font-bold hover:bg-white hover:text-red-700 transition">
-                            <i class="fab fa-youtube text-2xl"></i>
-                            <span>ВІДКРИТИ ВІДЕО-ГАЙД</span>
+                    <div class="accordion-content text-center">
+                        <p class="mb-6">Інструкція по роботі з сайтом:</p>
+                        <a href="https://www.youtube.com/watch?v=YAgJ9XugGBo&t=5018s" target="_blank" class="inline-flex items-center space-x-3 bg-red-600 px-10 py-4 rounded-full font-bold">
+                            <i class="fab fa-youtube text-2xl"></i> <span>ВІДКРИТИ НА YOUTUBE</span>
                         </a>
                     </div>
                 </div>
@@ -226,37 +232,26 @@ HTML_TEMPLATE = """
 
         <!-- Таймери -->
         <section id="tab-timers" class="tab-content hidden">
-            <h2 class="text-4xl font-black mb-10 border-b border-white/10 pb-5 uppercase">Ваші заборгованості</h2>
-            <div class="grid gap-6">
+            <h2 class="text-3xl font-black mb-8 border-b border-white/10 pb-4 uppercase">Активні Н</h2>
+            <div class="grid gap-4">
                 {% for item in user_absences %}
-                <div class="card p-6 rounded-3xl flex flex-col md:flex-row justify-between items-center shadow-lg" id="absence-{{ item.id }}">
+                <div class="card p-6 rounded-2xl flex flex-col md:flex-row justify-between items-center shadow-lg">
                     <div class="flex items-center space-x-6 text-left w-full">
-                        <div class="bg-red-800 text-white min-w-[4rem] h-16 rounded-2xl flex items-center justify-center font-black text-3xl">H</div>
-                        <div>
-                            <h4 class="text-2xl font-black uppercase leading-none mb-1">{{ item.subject_name }}</h4>
-                            <p class="text-gray-500 font-bold">{{ item.teacher_name }}</p>
-                            <p class="text-sm text-red-700 mt-1">
-                                <i class="fas fa-envelope mr-1"></i> {{ item.teacher_email }} | 
-                                <i class="fas fa-door-open mr-1 ml-2"></i> Кабінет: {{ item.room }}
-                            </p>
-                            {% if session['role'] in ['ADMIN', 'TEACHER'] %}
-                                <div class="mt-2 text-xs bg-gray-100 p-2 rounded-lg inline-block border border-gray-200">
-                                    <span class="text-black font-bold uppercase">Студент:</span> {{ item.student_name }}
-                                </div>
-                            {% endif %}
+                        <div class="bg-red-800 text-white p-4 rounded-xl font-black text-2xl">H</div>
+                        <div class="flex-grow">
+                            <h4 class="text-2xl font-black uppercase leading-tight">{{ item.get('subject_name', '???') }}</h4>
+                            <button onclick='showStudentProfile({{ item.student|tojson }})' class="text-red-700 font-bold hover:underline">
+                                Студент: {{ item.get('student_name', '...') }}
+                            </button>
+                            <p class="text-xs opacity-50 mt-1">Дедлайн: <span class="text-black font-bold" data-deadline="{{ item.get('deadline', '') }}"></span></p>
                         </div>
                     </div>
-                    <div class="flex flex-col md:items-end mt-6 md:mt-0 space-y-3 w-full md:w-auto">
-                        <div class="timer-badge text-xl shadow-inner" data-until="{{ item.deadline }}">Розрахунок...</div>
-                        <button onclick="resolveAbsence({{ item.id }})" class="w-full md:w-auto bg-black text-white px-6 py-2 rounded-xl hover:bg-green-700 transition font-black uppercase text-xs tracking-widest">
-                            ВІДПРАЦЬОВАНО
-                        </button>
+                    <div class="flex flex-col md:items-end mt-4 md:mt-0 space-y-2 w-full md:w-auto">
+                        <div class="timer-badge text-xl" data-timer-until="{{ item.get('deadline', '') }}">...</div>
+                        {% if session.get('role') in ['ADMIN', 'TEACHER'] %}
+                            <button onclick="resolveN({{ item.id }})" class="bg-green-600 text-white px-6 py-1.5 rounded-lg text-xs font-bold uppercase w-full">Відпрацьовано</button>
+                        {% endif %}
                     </div>
-                </div>
-                {% else %}
-                <div class="text-center py-24 bg-black/10 rounded-3xl border border-white/5 opacity-40">
-                    <i class="fas fa-check-double text-6xl mb-4"></i>
-                    <p class="text-xl">Заборгованостей не знайдено. Ви молодець!</p>
                 </div>
                 {% endfor %}
             </div>
@@ -264,114 +259,110 @@ HTML_TEMPLATE = """
 
         <!-- Керування -->
         <section id="tab-admin" class="tab-content hidden">
-            <h2 class="text-4xl font-black mb-10 uppercase">Панель адміністратора</h2>
-            <div class="grid lg:grid-cols-2 gap-10">
-                <!-- Реєстрація -->
-                <div class="admin-section">
-                    <h3 class="text-2xl font-bold mb-6 flex items-center text-green-400">
-                        <i class="fas fa-user-plus mr-3"></i> Новий користувач
-                    </h3>
-                    <div class="flex space-x-2 mb-6 p-1 bg-white/10 rounded-xl">
-                        <button onclick="switchRole('STUDENT')" id="role-s" class="flex-grow py-2 rounded-lg bg-white text-black font-bold transition">Студент</button>
-                        <button onclick="switchRole('TEACHER')" id="role-t" class="flex-grow py-2 rounded-lg text-white hover:bg-white/5 transition">Викладач</button>
-                    </div>
-                    <form action="/api/add_user" method="POST" class="space-y-4">
-                        <input type="hidden" name="role" id="role-val" value="STUDENT">
-                        <input type="text" name="fullname" placeholder="ПІБ Користувача" required class="w-full p-3 rounded-xl bg-white text-black font-bold">
-                        <input type="email" name="email" placeholder="Електронна пошта (напр. user@ukd.edu.ua)" required class="w-full p-3 rounded-xl bg-white text-black font-bold">
-                        
-                        <div id="teacher-fields" class="hidden">
-                            <input type="text" name="room" placeholder="Номер кабінету" class="w-full p-3 rounded-xl bg-white text-black font-bold border-2 border-yellow-500">
-                        </div>
-
-                        <div class="flex space-x-3">
-                            <input type="text" name="username" placeholder="Логін (для системних цілей)" required class="w-1/2 p-3 rounded-xl bg-white text-black font-bold">
-                            <input type="text" name="password" placeholder="Пароль" required class="w-1/2 p-3 rounded-xl bg-white text-black font-bold">
-                        </div>
-                        <button type="submit" class="w-full bg-green-600 text-white font-black py-4 rounded-xl hover:bg-black transition uppercase tracking-widest">ЗАРЕЄСТРУВАТИ</button>
-                    </form>
+            <div class="grid lg:grid-cols-2 gap-8">
+                <div class="bg-black/20 p-8 rounded-3xl border border-white/10 text-center flex flex-col items-center">
+                    <i class="fas fa-sync text-5xl text-blue-500 mb-6"></i>
+                    <h3 class="text-2xl font-bold mb-4">Google Sheets</h3>
+                    <button onclick="syncSheets()" id="sync-btn" class="w-full bg-blue-600 py-4 rounded-xl font-black uppercase">Синхронізувати</button>
                 </div>
-
-                <!-- Виставлення Н -->
-                <div class="admin-section">
-                    <h3 class="text-2xl font-bold mb-6 flex items-center text-yellow-400">
-                        <i class="fas fa-clock mr-3"></i> Виставити заборгованість
-                    </h3>
-                    <form action="/api/add_absence" method="POST" class="space-y-4">
-                        <select name="student_id" class="w-full p-3 rounded-xl bg-white text-black font-bold outline-none" required>
-                            <option value="" disabled selected>Оберіть студента</option>
-                            {% for u in all_users if u.role == 'STUDENT' %}<option value="{{ u.id }}">{{ u.fullname }}</option>{% endfor %}
+                <div class="bg-black/20 p-8 rounded-3xl border border-white/10">
+                    <h3 class="text-2xl font-bold mb-6 text-yellow-400">Додати Користувача</h3>
+                    <form action="/api/add_user" method="POST" class="space-y-4">
+                        <select name="role" onchange="toggleRegFields(this.value)" class="w-full p-3 rounded-xl bg-white text-black font-bold">
+                            <option value="STUDENT">Студент</option>
+                            <option value="TEACHER">Викладач</option>
                         </select>
-                        <select name="subject_id" class="w-full p-3 rounded-xl bg-white text-black font-bold outline-none" required>
-                            <option value="" disabled selected>Оберіть предмет</option>
-                            {% for s in all_subjects %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
-                        </select>
-                        <div class="bg-black/20 p-4 rounded-xl border border-white/10">
-                            <label class="text-xs uppercase font-black opacity-50 mb-2 block">Крайній термін відпрацювання:</label>
-                            <input type="datetime-local" name="deadline" required class="w-full p-2 rounded bg-white text-black font-bold">
+                        <input type="text" name="fullname" placeholder="ПІБ" required class="w-full p-3 rounded-xl bg-white text-black font-bold">
+                        <input type="email" name="email" placeholder="Email" required class="w-full p-3 rounded-xl bg-white text-black font-bold">
+                        <div id="reg-teacher-fields" class="hidden">
+                            <input type="text" name="room" placeholder="Кабінет" class="w-full p-3 rounded-xl bg-white text-black font-bold border-2 border-red-500">
                         </div>
-                        <button type="submit" class="w-full bg-yellow-500 text-black font-black py-4 rounded-xl hover:bg-black hover:text-white transition uppercase tracking-widest">ВИСТАВИТИ Н-КУ</button>
+                        <div class="flex space-x-2">
+                            <input type="text" name="username" placeholder="Логін" required class="w-1/2 p-3 rounded-xl bg-white text-black">
+                            <input type="text" name="password" placeholder="Пароль" required class="w-1/2 p-3 rounded-xl bg-white text-black">
+                        </div>
+                        <button class="w-full bg-green-600 text-white py-3 rounded-xl font-black uppercase">ЗБЕРЕГТИ</button>
                     </form>
                 </div>
             </div>
         </section>
 
-        <!-- Творці -->
-        <section id="tab-creators" class="tab-content hidden">
-            <h2 class="text-4xl font-black text-center mb-12 uppercase tracking-tighter">Команда проекту</h2>
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Творці (Повернуто до 5 карток) -->
+        <section id="tab-creators" class="tab-content hidden text-center relative min-h-[500px]">
+            <h2 class="text-4xl font-black mb-12 uppercase tracking-tighter">Команда проекту</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
                 {% for dev in creators %}
-                <div class="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-red-500 transition-all group">
-                    <div class="w-16 h-16 bg-red-800 rounded-2xl flex items-center justify-center font-black text-2xl mb-6 shadow-xl group-hover:scale-110 transition">{{ dev.name[0] }}</div>
-                    <h3 class="text-2xl font-black mb-1">{{ dev.name }}</h3>
-                    <p class="text-red-400 font-bold uppercase text-xs mb-4 tracking-widest">{{ dev.role }}</p>
-                    <p class="text-sm opacity-60 mb-6 leading-relaxed">{{ dev.desc }}</p>
-                    <div class="bg-black/30 p-4 rounded-xl border border-white/5">
-                        <span class="text-[10px] uppercase font-black opacity-40 block mb-1">Ключові навички</span>
-                        <p class="text-xs font-bold text-gray-300">{{ dev.skills }}</p>
+                <div class="bg-white/5 p-8 rounded-3xl border border-white/10 hover:border-red-500 transition-all flex flex-col h-full">
+                    <div class="w-16 h-16 bg-red-800 rounded-full mx-auto mb-4 flex items-center justify-center font-bold text-2xl shadow-lg overflow-hidden">
+                        {% if dev.get('avatar') %}
+                            <img src="{{ dev.get('avatar') }}" class="w-full h-full object-cover">
+                        {% else %}
+                            {{ dev.get('name', 'D')[0] }}
+                        {% endif %}
+                    </div>
+                    <h4 class="font-bold text-xl">{{ dev.get('name', 'Розробник') }}</h4>
+                    <p class="text-red-400 text-xs uppercase mb-4 tracking-widest">{{ dev.get('role', 'Dev') }}</p>
+                    <p class="text-sm opacity-60 leading-relaxed mb-6">{{ dev.get('desc', '') }}</p>
+                    <div class="mt-auto pt-4 border-t border-white/10 text-left">
+                        <span class="text-[10px] uppercase font-bold opacity-40 block mb-2">Навички</span>
+                        <div class="text-xs font-mono text-gray-300">{{ dev.get('skills', 'Soft Skills') }}</div>
                     </div>
                 </div>
                 {% endfor %}
             </div>
+            <!-- Двигун роботи -->
+            <a href="https://lovespace.ua/uk/products/vibrator-satisfyer-love-me" target="_blank" class="process-link">
+                <i class="fas fa-video"></i> <span>Робочий процес</span>
+            </a>
         </section>
 
         <!-- Профіль -->
         {% if current_user %}
-        <section id="tab-profile" class="tab-content hidden max-w-xl mx-auto py-10">
-            <div class="bg-white/10 p-12 rounded-[3rem] border border-white/20 text-center backdrop-blur-xl">
-                <img src="{{ current_user.avatar }}" class="w-32 h-32 rounded-full mx-auto mb-6 border-4 border-white shadow-2xl">
-                <h2 class="text-4xl font-black mb-1 uppercase tracking-tighter">{{ current_user.fullname }}</h2>
-                <p class="text-red-500 font-black mb-8 uppercase text-sm tracking-widest">{{ current_user.role }}</p>
-                <div class="text-left space-y-4 bg-black/40 p-8 rounded-3xl border border-white/5">
-                    <p class="flex flex-col"><span class="text-[10px] uppercase font-black opacity-40">Email Адреса</span><span class="font-bold text-lg">{{ current_user.email }}</span></p>
-                    <p class="flex flex-col"><span class="text-[10px] uppercase font-black opacity-40">Логін у системі</span><span class="font-bold text-lg">@{{ current_user.username }}</span></p>
-                    {% if current_user.room %}<p class="flex flex-col"><span class="text-[10px] uppercase font-black opacity-40">Робочий кабінет</span><span class="font-bold text-lg text-yellow-400">{{ current_user.room }}</span></p>{% endif %}
+        <section id="tab-profile" class="tab-content hidden max-w-2xl mx-auto text-center">
+            <div class="bg-white/10 p-12 rounded-[3rem] border border-white/20">
+                <div class="relative inline-block mb-6">
+                    <img src="{{ current_user.get('avatar', '') }}" class="w-32 h-32 rounded-full border-4 border-white shadow-2xl">
+                    <button onclick="toggleAvatarEdit(true)" class="absolute bottom-0 right-0 bg-red-700 p-2 rounded-full border-2 border-white"><i class="fas fa-camera"></i></button>
                 </div>
-                <form action="/api/update_avatar" method="POST" class="mt-10">
-                    <input type="url" name="url" placeholder="Вставте URL фото" class="w-full p-3 rounded-xl bg-white text-black font-bold text-sm mb-3 outline-none focus:ring-4 ring-red-500/30" required>
-                    <button class="w-full bg-white text-black py-3 rounded-xl font-black uppercase tracking-widest text-xs hover:bg-red-200 transition">ОНОВИТИ АВАТАР</button>
-                </form>
+                <h2 class="text-4xl font-black uppercase">{{ current_user.get('fullname', '') }}</h2>
+                <p class="text-red-500 font-bold mb-8 uppercase tracking-widest">{{ current_user.get('role', '') }}</p>
+                <div id="avatar-edit" class="hidden mt-8">
+                    <form action="/api/update_avatar" method="POST" class="flex flex-col space-y-3">
+                        <input type="url" name="url" placeholder="URL нової аватарки" class="p-3 rounded-xl bg-white text-black font-bold outline-none" required>
+                        <button class="bg-white text-black py-2 rounded-xl font-black uppercase text-xs">Оновити</button>
+                    </form>
+                </div>
             </div>
         </section>
         {% endif %}
     </main>
 
-    <!-- Модалка логіну -->
-    <div id="login-modal" class="hidden fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4">
-        <div class="bg-white text-black p-10 rounded-3xl w-full max-w-sm relative shadow-[0_0_50px_rgba(255,0,0,0.2)]">
-            <button onclick="toggleLogin(false)" class="absolute top-6 right-6 text-2xl hover:text-red-600 transition">&times;</button>
-            <h2 class="text-3xl font-black mb-8 uppercase text-center tracking-tighter">УКД СЕРВІС</h2>
-            <form action="/login" method="POST" class="space-y-5">
-                <input type="email" name="email" placeholder="Електронна пошта" required class="w-full border-2 border-gray-100 p-4 rounded-xl font-bold outline-none focus:border-red-600 transition">
-                <input type="password" name="pass" placeholder="Пароль" required class="w-full border-2 border-gray-100 p-4 rounded-xl font-bold outline-none focus:border-red-600 transition">
-                <button class="w-full bg-black text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-red-800 transition">УВІЙТИ</button>
-            </form>
+    <!-- Модалки -->
+    <div id="student-modal" class="hidden fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-4">
+        <div class="bg-white text-black p-10 rounded-[3rem] w-full max-w-lg relative text-center">
+            <button onclick="closeStudentModal()" class="absolute top-6 right-6 text-3xl hover:text-red-600 transition">&times;</button>
+            <img id="sm-avatar" src="" class="w-24 h-24 rounded-full mx-auto mb-6 border-4 border-red-800 shadow-xl">
+            <h2 id="sm-name" class="text-3xl font-black uppercase mb-1">...</h2>
+            <div class="bg-gray-100 p-8 rounded-3xl text-left grid grid-cols-2 gap-4 text-sm mt-8 border border-gray-200">
+                <div><span class="opacity-40 uppercase font-bold text-[10px]">Email</span><br><strong id="sm-email"></strong></div>
+                <div><span class="opacity-40 uppercase font-bold text-[10px]">Курс</span><br><strong id="sm-course"></strong></div>
+                <div><span class="opacity-40 uppercase font-bold text-[10px]">Спеціальність</span><br><strong id="sm-spec"></strong></div>
+                <div><span class="opacity-40 uppercase font-bold text-[10px]">Заклад</span><br><strong id="sm-inst"></strong></div>
+            </div>
         </div>
     </div>
 
-    <footer class="bg-black py-10 text-center opacity-30 border-t border-white/5">
-        <p class="text-xs font-black uppercase tracking-[0.5em]">Університет Короля Данила © 2026</p>
-    </footer>
+    <div id="login-modal" class="hidden fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4">
+        <div class="bg-white text-black p-10 rounded-3xl w-full max-w-sm relative shadow-2xl">
+            <button onclick="toggleLogin(false)" class="absolute top-4 right-4 text-2xl hover:text-red-600 transition">&times;</button>
+            <h2 class="text-3xl font-black mb-8 text-center uppercase tracking-tighter">ВХІД УКД</h2>
+            <form action="/login" method="POST" class="space-y-4">
+                <input type="email" name="email" placeholder="Email" required class="w-full border-2 p-4 rounded-xl font-bold outline-none">
+                <input type="password" name="pass" placeholder="Пароль" required class="w-full border-2 p-4 rounded-xl font-bold outline-none">
+                <button class="w-full bg-black text-white py-4 rounded-xl font-black uppercase">Увійти</button>
+            </form>
+        </div>
+    </div>
 
     <script>
         function showTab(id) {
@@ -382,42 +373,50 @@ HTML_TEMPLATE = """
             const btn = document.getElementById('btn-' + id);
             if(btn) btn.classList.add('active');
         }
-
         function toggleLogin(s) { document.getElementById('login-modal').classList.toggle('hidden', !s); }
-
-        function switchRole(role) {
-            document.getElementById('role-val').value = role;
-            document.getElementById('teacher-fields').classList.toggle('hidden', role !== 'TEACHER');
-            document.getElementById('role-s').className = role === 'STUDENT' ? "flex-grow py-2 rounded-lg bg-white text-black font-bold" : "flex-grow py-2 rounded-lg text-white hover:bg-white/5 transition";
-            document.getElementById('role-t').className = role === 'TEACHER' ? "flex-grow py-2 rounded-lg bg-white text-black font-bold" : "flex-grow py-2 rounded-lg text-white hover:bg-white/5 transition";
+        function toggleAvatarEdit(s) { document.getElementById('avatar-edit').classList.toggle('hidden', !s); }
+        function toggleRegFields(role) { document.getElementById('reg-teacher-fields').classList.toggle('hidden', role !== 'TEACHER'); }
+        function showStudentProfile(u) {
+            document.getElementById('sm-avatar').src = u.avatar || '';
+            document.getElementById('sm-name').innerText = u.fullname || '...';
+            document.getElementById('sm-email').innerText = u.email || '...';
+            document.getElementById('sm-course').innerText = u.course || '1';
+            document.getElementById('sm-spec').innerText = u.specialty || 'ІПЗ';
+            document.getElementById('sm-inst').innerText = u.institution || 'Університет';
+            document.getElementById('student-modal').classList.remove('hidden');
         }
-
-        function updateTimers() {
-            document.querySelectorAll('.timer-badge').forEach(badge => {
-                const until = new Date(badge.dataset.until).getTime();
-                const now = new Date().getTime();
-                const diff = Math.floor((until - now) / 1000);
-                if (diff > 0) {
-                    const h = Math.floor(diff / 3600);
-                    const m = Math.floor((diff % 3600) / 60);
-                    const s = diff % 60;
-                    badge.innerText = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-                } else {
-                    badge.innerText = "ТЕРМІН ВИЙШОВ";
-                    badge.style.background = "black";
-                }
+        function closeStudentModal() { document.getElementById('student-modal').classList.add('hidden'); }
+        function syncSheets() {
+            const btn = document.getElementById('sync-btn');
+            btn.innerText = "Синхронізація...";
+            btn.disabled = true;
+            fetch('/api/sync_sheets').then(r => r.json()).then(d => { alert(d.message); location.reload(); }).catch(e => { alert("Помилка"); btn.innerText = "Синхронізувати"; btn.disabled = false; });
+        }
+        function resolveN(id) { fetch('/api/resolve/' + id).then(r => r.json()).then(d => { if(d.success) location.reload(); }); }
+        function runSystem() {
+            const months = ["Січня", "Лютого", "Березня", "Квітня", "Травня", "Червня", "Липня", "Серпня", "Вересня", "Жовтня", "Листопада", "Грудня"];
+            document.querySelectorAll('[data-deadline]').forEach(el => {
+                const val = el.dataset.deadline;
+                if(!val) return;
+                const d = new Date(val);
+                if(!isNaN(d)) el.innerText = `${d.getDate()} ${months[d.getMonth()]} о ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
             });
+            setInterval(() => {
+                document.querySelectorAll('[data-timer-until]').forEach(badge => {
+                    const untilVal = badge.dataset.timerUntil;
+                    if(!untilVal) return;
+                    const until = new Date(untilVal).getTime();
+                    const diff = Math.floor((until - new Date().getTime()) / 1000);
+                    if (diff > 0) {
+                        const h = Math.floor(diff / 3600);
+                        const m = Math.floor((diff % 3600) / 60);
+                        const s = diff % 60;
+                        badge.innerText = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                    } else { badge.innerText = "ЧАС ВИЙШОВ"; badge.style.background = "black"; }
+                });
+            }, 1000);
         }
-        setInterval(updateTimers, 1000);
-
-        function resolveAbsence(id) {
-            fetch('/api/resolve/' + id).then(() => {
-                const el = document.getElementById('absence-' + id);
-                el.style.opacity = '0';
-                setTimeout(() => location.reload(), 300);
-            });
-        }
-
+        runSystem();
         const urlParams = new URLSearchParams(window.location.search);
         if(urlParams.has('tab')) showTab(urlParams.get('tab'));
     </script>
@@ -431,47 +430,50 @@ def index():
     user_absences = []
     curr = None
     if 'user_id' in session:
-        curr = next((u for u in db['users'] if u['id'] == session['user_id']), None)
+        curr = next((u for u in db['users'] if u.get('id') == session['user_id']), None)
         for a in db.get('absences', []):
-            if session['role'] in ['ADMIN', 'TEACHER'] or a.get('student_id') == session['user_id']:
-                sub = next((s for s in db['subjects'] if s['id'] == a.get('subject_id')), None)
-                if sub:
+            if session.get('role') in ['ADMIN', 'TEACHER'] or a.get('student_id') == session.get('user_id'):
+                sub = next((s for s in db['subjects'] if s.get('id') == a.get('subject_id')), None)
+                student = next((u for u in db['users'] if u.get('id') == a.get('student_id')), None)
+                if sub and student:
                     t_id = sub.get('teacher_id')
                     teacher = next((u for u in db['users'] if u['id'] == t_id), None)
-                    student = next((u for u in db['users'] if u['id'] == a.get('student_id')), None)
                     user_absences.append({
                         "id": a.get('id'),
-                        "subject_name": sub.get('name', 'Невідомо'),
-                        "teacher_name": teacher['fullname'] if teacher else "Викладач",
-                        "teacher_email": teacher.get('email', '-') if teacher else "-",
-                        "room": teacher.get('room', '???') if teacher else "???",
-                        "student_name": student['fullname'] if student else "Студент",
-                        "deadline": a.get('deadline', '2024-01-01T00:00')
+                        "subject_name": sub.get('name', '???'),
+                        "teacher_name": teacher.get('fullname', 'Викладач') if teacher else "Викладач",
+                        "student_name": student.get('fullname', 'Студент'),
+                        "student": student,
+                        "deadline": a.get('deadline', '')
                     })
-
-    return render_template_string(HTML_TEMPLATE, 
-                                  total_absences=len(db.get('absences', [])),
-                                  total_subjects=len(db.get('subjects', [])),
-                                  user_absences=user_absences,
-                                  all_users=db['users'],
-                                  all_subjects=db['subjects'],
-                                  creators=db.get('creators', []),
-                                  current_user=curr)
+    return render_template_string(HTML_TEMPLATE, total_absences=len(db.get('absences', [])), total_subjects=len(db.get('subjects', [])), user_absences=user_absences, all_users=db['users'], all_subjects=db['subjects'], creators=db.get('creators', []), current_user=curr)
 
 @app.route('/login', methods=['POST'])
 def login():
     db = load_data()
     email, p = request.form.get('email'), request.form.get('pass')
-    # Тепер шукаємо користувача за поштою
-    user = next((x for x in db['users'] if x['email'] == email and x['password'] == p), None)
-    if user:
-        session.update({"user_id": user['id'], "role": user['role'], "username": user['username']})
+    user = next((x for x in db['users'] if x.get('email') == email and x.get('password') == p), None)
+    if user: session.update({"user_id": user['id'], "role": user['role'], "username": user.get('username')})
     return redirect('/')
 
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect('/')
+
+@app.route('/api/sync_sheets')
+def sync_sheets():
+    if session.get('role') not in ['ADMIN', 'TEACHER']: return jsonify({"success": False, "message": "Відмовлено"})
+    success, message = sync_data_from_sheets()
+    return jsonify({"success": success, "message": message})
+
+@app.route('/api/resolve/<int:abs_id>')
+def resolve(abs_id):
+    if session.get('role') not in ['ADMIN', 'TEACHER']: return jsonify({"success": False}), 403
+    db = load_data()
+    db['absences'] = [a for a in db['absences'] if a.get('id') != abs_id]
+    save_data(db)
+    return jsonify({"success": True})
 
 @app.route('/api/add_user', methods=['POST'])
 def add_user():
@@ -483,11 +485,11 @@ def add_user():
         "password": request.form.get('password'),
         "fullname": request.form.get('fullname'),
         "email": request.form.get('email'),
-        "role": request.form.get('role'),
-        "avatar": "https://cdn-icons-png.flaticon.com/512/354/354637.png"
+        "role": request.form.get('role', 'STUDENT'),
+        "avatar": "https://cdn-icons-png.flaticon.com/512/354/354637.png",
+        "course": "1", "specialty": "ІПЗ", "institution": "Університет",
+        "room": request.form.get('room', '')
     }
-    if new_user['role'] == 'TEACHER':
-        new_user['room'] = request.form.get('room', '???')
     db['users'].append(new_user)
     save_data(db)
     return redirect('/?tab=admin')
@@ -496,22 +498,9 @@ def add_user():
 def add_absence():
     if session.get('role') not in ['ADMIN', 'TEACHER']: return redirect('/')
     db = load_data()
-    db['absences'].append({
-        "id": len(db['absences']) + 1,
-        "student_id": int(request.form.get('student_id')),
-        "subject_id": int(request.form.get('subject_id')),
-        "deadline": request.form.get('deadline'),
-        "status": "active"
-    })
+    db['absences'].append({"id": len(db['absences']) + 1, "student_id": int(request.form.get('student_id')), "subject_id": int(request.form.get('subject_id')), "deadline": request.form.get('deadline'), "status": "active"})
     save_data(db)
     return redirect('/?tab=timers')
-
-@app.route('/api/resolve/<int:abs_id>')
-def resolve(abs_id):
-    db = load_data()
-    db['absences'] = [a for a in db['absences'] if a.get('id') != abs_id]
-    save_data(db)
-    return jsonify({"success": True})
 
 @app.route('/api/update_avatar', methods=['POST'])
 def update_avatar():
